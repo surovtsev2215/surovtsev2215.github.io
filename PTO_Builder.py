@@ -1,6 +1,14 @@
 import tkinter as tk
 from tkinter import scrolledtext, messagebox
-import requests
+import sys
+
+# Проверка requests при запуске
+try:
+    import requests
+except ImportError:
+    tk.Tk().withdraw()
+    messagebox.showerror("Ошибка", "Модуль requests не установлен.\nУстановите: pip install requests")
+    sys.exit(1)
 
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
 API_KEY = "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"
