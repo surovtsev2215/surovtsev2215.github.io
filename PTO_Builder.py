@@ -4,7 +4,7 @@ import requests
 import os
 
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
-API_KEY = "sk-or-v1-ваш-ключ"
+API_KEY = "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"
 
 def create():
     prompt = input_text.get("1.0", tk.END).strip()
