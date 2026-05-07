@@ -33,25 +33,34 @@ const defaultUsers: DemoUser[] = [adminOnlyUser];
 
 function migrateRawList(raw: unknown): DemoUser[] {
   if (!Array.isArray(raw)) return defaultUsers;
-  const adminFromStorage = raw.find((item) => {
-    if (!item || typeof item !== "object") return false;
+  const normalized: DemoUser[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
     const candidate = item as Partial<DemoUser>;
-    return (
-      (candidate.uid === "demo-admin" || normalizeFullName(candidate.fullName ?? "") === "admin") &&
-      candidate.role === "admin"
-    );
-  }) as Partial<DemoUser> | undefined;
-
-  if (!adminFromStorage) return defaultUsers;
-  return [
-    {
-      uid: "demo-admin",
-      role: "admin",
-      fullName: "admin",
-      email: syntheticEmailForUid("demo-admin"),
-      password: "3001"
-    }
-  ];
+    const fullName = String(candidate.fullName ?? "").trim();
+    const password = String(candidate.password ?? "");
+    const uid = String(candidate.uid ?? "").trim() || `demo-${crypto.randomUUID()}`;
+    if (!fullName || password.length < 1) continue;
+    const role: UserRole =
+      candidate.role === "admin" || candidate.role === "director" || candidate.role === "isolator"
+        ? candidate.role
+        : "isolator";
+    normalized.push({
+      uid,
+      role,
+      fullName,
+      email: String(candidate.email ?? "").trim() || syntheticEmailForUid(uid),
+      password
+    });
+  }
+  if (!normalized.some((u) => u.uid === "demo-admin" || normalizeFullName(u.fullName) === "admin")) {
+    normalized.unshift(adminOnlyUser);
+  }
+  const byUid = new Map<string, DemoUser>();
+  for (const user of normalized) {
+    byUid.set(user.uid, user);
+  }
+  return Array.from(byUid.values());
 }
 
 export function getDemoUsers(): DemoUser[] {
@@ -95,20 +104,58 @@ export function getDemoAuditEvents(): DemoAuditEvent[] {
 }
 
 export function createDemoStaffUser(input: { fullName: string; password: string; role: "isolator" | "director" }) {
-  void input;
-  throw new Error("Создание профилей временно отключено. Доступен только admin.");
+  const fullName = input.fullName.trim();
+  if (!fullName) throw new Error("Введите ФИО.");
+  if (input.password.length < 6) throw new Error("Пароль должен быть не короче 6 символов.");
+  const norm = normalizeFullName(fullName);
+  const users = getDemoUsers();
+  if (users.some((u) => normalizeFullName(u.fullName) === norm)) {
+    throw new Error("Пользователь с таким ФИО уже существует.");
+  }
+  const uid = `demo-${crypto.randomUUID()}`;
+  const created: DemoUser = {
+    uid,
+    role: input.role,
+    fullName,
+    email: syntheticEmailForUid(uid),
+    password: input.password
+  };
+  saveDemoUsers([created, ...users]);
+  appendAudit({ action: "create", uid: created.uid, fullName: created.fullName });
 }
 
 export function removeDemoUser(uid: string) {
-  void uid;
-  throw new Error("Удаление профилей отключено. Доступен только admin.");
+  if (!uid) throw new Error("Не указан пользователь.");
+  if (uid === "demo-admin") throw new Error("Нельзя удалить встроенного admin.");
+  const users = getDemoUsers();
+  const target = users.find((u) => u.uid === uid);
+  if (!target) throw new Error("Пользователь не найден.");
+  saveDemoUsers(users.filter((u) => u.uid !== uid));
+  appendAudit({ action: "delete", uid: target.uid, fullName: target.fullName });
 }
 
 export function updateDemoUser(
   uid: string,
   input: { fullName: string; password: string; role?: "isolator" | "director" }
 ) {
-  void uid;
-  void input;
-  throw new Error("Изменение профилей отключено. Доступен только admin.");
+  if (!uid) throw new Error("Не указан пользователь.");
+  const fullName = input.fullName.trim();
+  if (!fullName) throw new Error("Введите ФИО.");
+  if (input.password.length < 6) throw new Error("Пароль должен быть не короче 6 символов.");
+  const users = getDemoUsers();
+  const idx = users.findIndex((u) => u.uid === uid);
+  if (idx < 0) throw new Error("Пользователь не найден.");
+  const norm = normalizeFullName(fullName);
+  const duplicate = users.find((u) => u.uid !== uid && normalizeFullName(u.fullName) === norm);
+  if (duplicate) throw new Error("Пользователь с таким ФИО уже существует.");
+  const current = users[idx];
+  const updated: DemoUser = {
+    ...current,
+    fullName,
+    password: input.password,
+    role: current.uid === "demo-admin" ? "admin" : input.role ?? current.role
+  };
+  users[idx] = updated;
+  saveDemoUsers(users);
+  appendAudit({ action: "update", uid: updated.uid, fullName: updated.fullName });
 }

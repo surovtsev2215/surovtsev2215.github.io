@@ -1,11 +1,71 @@
 ================================================== 
-Deploy started: 07.05.2026 16:25:47,39 
+Safe deploy started: 07.05.2026 20:56:05,27 
 Root: C:\Users\Surovcev\PTO_Project 
 Dry run: 0 
 ================================================== 
-[1/8] Open project root 
-[2/8] Verify git repository 
+[1/11] Open project root 
+[2/11] Verify git repository 
 true
-[3/8] Check pending changes 
-Changes count: 4 
-[4/8] Stage and commit changes 
+[3/11] Ensure branch is publish branch 
+Current branch: master 
+[4/11] Build frontend (production) 
+
+> pto-isolation-pwa@1.0.0 build
+> tsc --noEmit && vite build
+
+[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 2051 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mmanifest.webmanifest                         [39m[1m[2m  0.34 kB[22m[1m[22m
+[2mdist/[22m[32mindex.html                                   [39m[1m[2m  1.48 kB[22m[1m[22m[2m │ gzip:   0.74 kB[22m
+[2mdist/[22m[35massets/index-B8GrHDz5.css                    [39m[1m[2m 39.60 kB[22m[1m[22m[2m │ gzip:   7.39 kB[22m
+[2mdist/[22m[36massets/label-QFwMYgDY.js                     [39m[1m[2m  0.36 kB[22m[1m[22m[2m │ gzip:   0.27 kB[22m
+[2mdist/[22m[36massets/password-input-rfIVvJbH.js            [39m[1m[2m  0.69 kB[22m[1m[22m[2m │ gzip:   0.48 kB[22m
+[2mdist/[22m[36massets/card-DNgEG3mV.js                      [39m[1m[2m  0.71 kB[22m[1m[22m[2m │ gzip:   0.33 kB[22m
+[2mdist/[22m[36massets/input-hzhdAtG4.js                     [39m[1m[2m  0.72 kB[22m[1m[22m[2m │ gzip:   0.40 kB[22m
+[2mdist/[22m[36massets/exportReports-scg0u6_6.js             [39m[1m[2m  1.72 kB[22m[1m[22m[2m │ gzip:   1.05 kB[22m
+[2mdist/[22m[36massets/useExecutiveReportsState-C_-CAJ3R.js  [39m[1m[2m  1.74 kB[22m[1m[22m[2m │ gzip:   0.86 kB[22m
+[2mdist/[22m[36massets/DirectorProfilePage-B2jXJ5Y4.js       [39m[1m[2m  1.89 kB[22m[1m[22m[2m │ gzip:   0.94 kB[22m
+[2mdist/[22m[36massets/LoginPage-bijjQTaX.js                 [39m[1m[2m  3.02 kB[22m[1m[22m[2m │ gzip:   1.56 kB[22m
+[2mdist/[22m[36massets/reportStore-B7ENHhv4.js               [39m[1m[2m  3.10 kB[22m[1m[22m[2m │ gzip:   1.34 kB[22m
+[2mdist/[22m[36massets/RegisterPage-CF6pYTu6.js              [39m[1m[2m  3.14 kB[22m[1m[22m[2m │ gzip:   1.52 kB[22m
+[2mdist/[22m[36massets/DirectorReportsPage-C_XIsjur.js       [39m[1m[2m  3.89 kB[22m[1m[22m[2m │ gzip:   1.78 kB[22m
+[2mdist/[22m[36massets/DirectorOverviewPage-DY0GxSpZ.js      [39m[1m[2m  4.44 kB[22m[1m[22m[2m │ gzip:   1.68 kB[22m
+[2mdist/[22m[36massets/HistoryPage-DHKzCeO0.js               [39m[1m[2m  5.16 kB[22m[1m[22m[2m │ gzip:   2.15 kB[22m
+[2mdist/[22m[36massets/workbox-window.prod.es5-BqEJf4Xk.js   [39m[1m[2m  5.71 kB[22m[1m[22m[2m │ gzip:   2.34 kB[22m
+[2mdist/[22m[36massets/AdminDashboardPage-CwnsJCOk.js        [39m[1m[2m  8.10 kB[22m[1m[22m[2m │ gzip:   2.77 kB[22m
+[2mdist/[22m[36massets/ReportDetailPage-CsCZfUXu.js          [39m[1m[2m  8.29 kB[22m[1m[22m[2m │ gzip:   3.17 kB[22m
+[2mdist/[22m[36massets/AdminUsersPage-9jtM8o56.js            [39m[1m[2m  8.60 kB[22m[1m[22m[2m │ gzip:   2.71 kB[22m
+[2mdist/[22m[36massets/purify.es-BwoZCkIS.js                 [39m[1m[2m 22.03 kB[22m[1m[22m[2m │ gzip:   8.77 kB[22m
+[2mdist/[22m[36massets/vendor-ui-DGWyvXnC.js                 [39m[1m[2m 32.88 kB[22m[1m[22m[2m │ gzip:   9.42 kB[22m
+[2mdist/[22m[36massets/FormPage-7mNdHbLI.js                  [39m[1m[2m 36.07 kB[22m[1m[22m[2m │ gzip:   7.36 kB[22m
+[2mdist/[22m[36massets/jspdf.plugin.autotable-t0UVjWa6.js    [39m[1m[2m 39.57 kB[22m[1m[22m[2m │ gzip:  12.78 kB[22m
+[2mdist/[22m[36massets/vendor-firebase-core-DUew2sQ1.js      [39m[1m[2m 48.06 kB[22m[1m[22m[2m │ gzip:  11.88 kB[22m
+[2mdist/[22m[36massets/index-COzLXRDo.js                     [39m[1m[2m 58.33 kB[22m[1m[22m[2m │ gzip:  18.83 kB[22m
+[2mdist/[22m[36massets/vendor-firebase-auth-BuayuZMe.js      [39m[1m[2m114.75 kB[22m[1m[22m[2m │ gzip:  23.46 kB[22m
+[2mdist/[22m[36massets/index.es-DJ0tPe_6.js                  [39m[1m[2m150.93 kB[22m[1m[22m[2m │ gzip:  51.65 kB[22m
+[2mdist/[22m[36massets/html2canvas.esm-CBrSDip1.js           [39m[1m[2m201.42 kB[22m[1m[22m[2m │ gzip:  48.03 kB[22m
+[2mdist/[22m[36massets/vendor-react-VSU0mNtb.js              [39m[1m[2m211.31 kB[22m[1m[22m[2m │ gzip:  67.40 kB[22m
+[2mdist/[22m[36massets/jspdf.es.min-BOqred4r.js              [39m[1m[2m357.91 kB[22m[1m[22m[2m │ gzip: 118.09 kB[22m
+[2mdist/[22m[36massets/vendor-firebase-data-BiOZLRDL.js      [39m[1m[2m412.63 kB[22m[1m[22m[2m │ gzip: 104.12 kB[22m
+[2mdist/[22m[36massets/xlsx-D_0l8YDs.js                      [39m[1m[2m429.03 kB[22m[1m[22m[2m │ gzip: 143.08 kB[22m
+[32m✓ built in 3.35s[39m
+
+PWA v0.20.5
+mode      generateSW
+precache  40 entries (2178.11 KiB)
+files generated
+  dist/sw.js
+  dist/workbox-ee9d8b34.js
+[5/11] Build Firebase Functions 
+
+> build
+> tsc
+
+[6/11] Return to project root 
+[7/11] Check pending changes 
+Changes count: 16 
+Demo flag: unknown 
+[8/11] Auto-commit prepared changes 

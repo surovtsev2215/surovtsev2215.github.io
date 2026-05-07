@@ -138,9 +138,9 @@ export function AdminUsersPage() {
           <Card>
             <CardContent className="space-y-3 p-4">
               <p className="text-sm text-slate-600 theme-dark:text-slate-300">
-                Demo-режим ограничен: оставлен только один профиль администратора.
+                Demo-режим полностью повторяет рабочее управление пользователями.
               </p>
-              <div className="grid gap-2 md:grid-cols-3 opacity-60">
+              <div className="grid gap-2 md:grid-cols-3">
                 <div>
                   <Label htmlFor="demo-fullname">ФИО</Label>
                   <Input
@@ -148,7 +148,6 @@ export function AdminUsersPage() {
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="Иванов Иван или Иванов И.И."
-                    disabled
                   />
                 </div>
                 <div>
@@ -158,7 +157,6 @@ export function AdminUsersPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Минимум 6 символов"
-                    disabled
                   />
                 </div>
                 <div>
@@ -168,15 +166,14 @@ export function AdminUsersPage() {
                     className="h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm theme-dark:border-slate-700 theme-dark:bg-slate-900"
                     value={newRole}
                     onChange={(e) => setNewRole(e.target.value === "director" ? "director" : "isolator")}
-                    disabled
                   >
                     <option value="isolator">Сотрудник (изолировщик)</option>
                     <option value="director">Директор</option>
                   </select>
                 </div>
               </div>
-              <Button type="button" disabled>
-                Создание demo-пользователей отключено
+              <Button type="button" onClick={addDemoUser}>
+                Создать demo-пользователя
               </Button>
             </CardContent>
           </Card>
@@ -264,9 +261,9 @@ export function AdminUsersPage() {
                             variant="outline"
                             size="sm"
                             className="w-full sm:w-auto"
-                            disabled
+                            onClick={() => beginEdit(user.uid, user.fullName, user.password, user.role)}
                           >
-                            Редактирование отключено
+                            Редактировать
                           </Button>
                           {user.role !== "admin" && (
                             <Button

@@ -30,6 +30,8 @@ debug-pto*.jsonl
 web/start_web_local.log
 web/backend/data/*.sqlite3
 web/frontend/dist/
+local-test-last.log
+last-stable-commit.txt
 
 # Firebase
 .firebase/

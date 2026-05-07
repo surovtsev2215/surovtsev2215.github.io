@@ -49,7 +49,9 @@ export function RegisterPage() {
       >
         <div className="surface-highlight mb-5 p-4">
           <h1 className="text-2xl font-semibold">Регистрация</h1>
-          <p className="mt-1 text-sm text-slate-100/90">Новый пользователь получит роль изолировщика</p>
+          <p className="mt-1 text-sm text-slate-100/90">
+            Первый зарегистрированный пользователь станет администратором, остальные — изолировщиками.
+          </p>
         </div>
         <div className="space-y-1">
           <Label htmlFor="register-fullname">ФИО</Label>

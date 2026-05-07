@@ -10,8 +10,9 @@ import { doc, getDoc } from "firebase/firestore";
 import { auth, db, functions } from "../lib/firebase";
 import type { Profile, UserRole } from "../types";
 import { isFirebaseConfigured } from "../lib/firebase";
-import { getDemoUsers } from "../lib/demoUsers";
+import { getDemoUsers, saveDemoUsers } from "../lib/demoUsers";
 import { normalizeFullName } from "../lib/normalizeFullName";
+import { syntheticEmailForUid } from "../lib/syntheticUserEmail";
 
 interface AuthContextValue {
   user: User | null;
@@ -182,7 +183,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
       register: async (fullName, password) => {
         if (!isFirebaseConfigured) {
-          throw new Error("Регистрация недоступна в demo-режиме. Создайте пользователя в панели администратора.");
+          const norm = normalizeFullName(fullName);
+          if (!norm) throw new Error("Введите ФИО.");
+          if (password.length < 6) throw new Error("Пароль должен быть не короче 6 символов.");
+          const users = getDemoUsers();
+          const exists = users.some((u) => normalizeFullName(u.fullName) === norm);
+          if (exists) throw new Error("Пользователь с таким ФИО уже существует.");
+
+          const uid = `demo-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+          const created = {
+            uid,
+            role: "isolator" as UserRole,
+            fullName: fullName.trim(),
+            email: syntheticEmailForUid(uid),
+            password
+          };
+          saveDemoUsers([...users, created]);
+          localStorage.setItem(
+            "pto-demo-user",
+            JSON.stringify({
+              role: created.role,
+              fullName: created.fullName,
+              email: created.email,
+              uid: created.uid
+            })
+          );
+          setRole(created.role);
+          setProfile({
+            uid: created.uid,
+            email: created.email,
+            fullName: created.fullName,
+            role: created.role
+          });
+          return;
         }
         try {
           const { data } = await registerByFullNameFn({ fullName: fullName.trim(), password });

@@ -181,7 +181,11 @@ exports.registerByFullName = (0, https_1.onCall)({ region: "us-central1" }, asyn
             await registerFailure(db, callerKey, now);
         throw new https_1.HttpsError("already-exists", "Пользователь с таким ФИО уже существует.");
     }
-    const role = resolveRole(requestedRole, isAdmin);
+    // Bootstrap path: the very first registered account becomes admin automatically.
+    // This removes the manual "set role in Firestore" step for initial setup.
+    const hasAnyUsersSnap = await db.collection("users").limit(1).get();
+    const isBootstrapRegistration = hasAnyUsersSnap.empty;
+    const role = isBootstrapRegistration ? "admin" : resolveRole(requestedRole, isAdmin);
     const uid = db.collection("users").doc().id;
     const email = syntheticEmailForUid(uid);
     const passwordHash = bcryptjs_1.default.hashSync(password, 10);
@@ -224,7 +228,7 @@ exports.registerByFullName = (0, https_1.onCall)({ region: "us-central1" }, asyn
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
         const token = await admin.auth().createCustomToken(uid, { role });
-        return { token };
+        return { token, role, bootstrap: isBootstrapRegistration };
     }
-    return { uid, role };
+    return { uid, role, bootstrap: isBootstrapRegistration };
 });
