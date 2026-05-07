@@ -18,7 +18,46 @@ const firebaseConfig = {
 export const isFirebaseConfigured =
   Object.values(firebaseConfig).every((v) => typeof v === "string" && v.length > 0);
 
+// #region agent log
+fetch("http://127.0.0.1:7653/ingest/20d63d97-1111-4b46-9651-c2ddf66cae7c", {
+  method: "POST",
+  headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "cddc9f" },
+  body: JSON.stringify({
+    sessionId: "cddc9f",
+    runId: "pre-fix",
+    hypothesisId: "H1",
+    location: "src/lib/firebase.ts:isFirebaseConfigured",
+    message: "firebase config presence check",
+    data: {
+      hasApiKey: Boolean(firebaseConfig.apiKey),
+      hasAuthDomain: Boolean(firebaseConfig.authDomain),
+      hasProjectId: Boolean(firebaseConfig.projectId),
+      hasStorageBucket: Boolean(firebaseConfig.storageBucket),
+      hasMessagingSenderId: Boolean(firebaseConfig.messagingSenderId),
+      hasAppId: Boolean(firebaseConfig.appId),
+      isFirebaseConfigured
+    },
+    timestamp: Date.now()
+  })
+}).catch(() => {});
+// #endregion
+
 if (!isFirebaseConfigured) {
+  // #region agent log
+  fetch("http://127.0.0.1:7653/ingest/20d63d97-1111-4b46-9651-c2ddf66cae7c", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "cddc9f" },
+    body: JSON.stringify({
+      sessionId: "cddc9f",
+      runId: "pre-fix",
+      hypothesisId: "H1",
+      location: "src/lib/firebase.ts:throwNotConfigured",
+      message: "firebase config missing, throwing hard error",
+      data: { isFirebaseConfigured },
+      timestamp: Date.now()
+    })
+  }).catch(() => {});
+  // #endregion
   throw new Error(
     "Firebase не настроен. Заполните VITE_FIREBASE_* в web/frontend/.env.local. Demo-режим отключен."
   );

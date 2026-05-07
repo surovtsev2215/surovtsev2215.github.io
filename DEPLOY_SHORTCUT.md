@@ -9,6 +9,7 @@
 3. `test-local-site.bat` — локальный production-тест (без публикации в интернет).
 4. `deploy-site.bat` — безопасная публикация (с обязательными проверками).
 5. `set-demo-mode.bat` — сервисный demo-режим (`VITE_FORCE_DEMO=1`).
+6. `sync-frontend-env-from-github.bat` — автосинхронизация `web/frontend/.env.local` из GitHub Actions Variables.
 
 ## Названия ярлыков на рабочем столе
 
@@ -21,12 +22,27 @@
 
 ## Что делает локальный тест (`test-local-site.bat`)
 
-1. Переходит в `web/frontend`.
-2. Выполняет production-сборку (`npm run build`).
-3. Запускает локальный просмотр сайта (`npm run preview -- --host`).
-4. Автоматически открывает браузер на `http://localhost:4173`.
+1. Синхронизирует `web/frontend/.env.local` через `sync-frontend-env-from-github.bat`.
+2. Переходит в `web/frontend`.
+3. Выполняет production-сборку (`npm run build`).
+4. Запускает локальный просмотр сайта (`npm run preview -- --host --strictPort --port 4173`).
+5. Открывает локальный адрес в Cursor (если доступно), иначе — в браузере.
 
 Лог записывается в `local-test-last.log`.
+
+## Первичная настройка для автосинхронизации .env
+
+1. Установите GitHub CLI: `gh`.
+2. Один раз выполните авторизацию:
+   - `gh auth login`
+3. Убедитесь, что в GitHub repo заполнены именно **Actions Variables** (не Secrets):
+   - `VITE_FIREBASE_API_KEY`
+   - `VITE_FIREBASE_APP_ID`
+   - `VITE_FIREBASE_AUTH_DOMAIN`
+   - `VITE_FIREBASE_MESSAGING_SENDER_ID`
+   - `VITE_FIREBASE_PROJECT_ID`
+   - `VITE_FIREBASE_STORAGE_BUCKET`
+4. После этого `ПТО · 2. Локальный Тест` сам обновляет `.env.local` перед сборкой.
 
 ## Что делает безопасная публикация (`deploy-site.bat`)
 

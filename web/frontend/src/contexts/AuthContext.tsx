@@ -62,8 +62,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // #region agent log
+    fetch("http://127.0.0.1:7653/ingest/20d63d97-1111-4b46-9651-c2ddf66cae7c", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "cddc9f" },
+      body: JSON.stringify({
+        sessionId: "cddc9f",
+        runId: "pre-fix",
+        hypothesisId: "H3",
+        location: "src/contexts/AuthContext.tsx:useEffect",
+        message: "auth state subscription started",
+        data: {},
+        timestamp: Date.now()
+      })
+    }).catch(() => {});
+    // #endregion
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       try {
+        // #region agent log
+        fetch("http://127.0.0.1:7653/ingest/20d63d97-1111-4b46-9651-c2ddf66cae7c", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "cddc9f" },
+          body: JSON.stringify({
+            sessionId: "cddc9f",
+            runId: "pre-fix",
+            hypothesisId: "H3",
+            location: "src/contexts/AuthContext.tsx:onAuthStateChanged",
+            message: "auth callback fired",
+            data: { hasFirebaseUser: Boolean(firebaseUser), uid: firebaseUser?.uid ?? null },
+            timestamp: Date.now()
+          })
+        }).catch(() => {});
+        // #endregion
         setUser(firebaseUser);
         if (!firebaseUser) {
           setProfile(null);
@@ -77,6 +107,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const profileDoc = await getDoc(doc(db, "users", firebaseUser.uid));
         const profileData = profileDoc.exists() ? (profileDoc.data() as Profile) : null;
         const resolvedRole = claimRole ?? profileData?.role ?? null;
+
+        // #region agent log
+        fetch("http://127.0.0.1:7653/ingest/20d63d97-1111-4b46-9651-c2ddf66cae7c", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "cddc9f" },
+          body: JSON.stringify({
+            sessionId: "cddc9f",
+            runId: "pre-fix",
+            hypothesisId: "H4",
+            location: "src/contexts/AuthContext.tsx:roleResolution",
+            message: "resolved role from claims/profile",
+            data: {
+              claimRole: claimRole ?? null,
+              profileRole: profileData?.role ?? null,
+              resolvedRole: resolvedRole ?? null,
+              profileExists: profileDoc.exists()
+            },
+            timestamp: Date.now()
+          })
+        }).catch(() => {});
+        // #endregion
 
         // Fail closed: no role means no protected access until profile/claims are fixed.
         if (!resolvedRole) {
@@ -94,7 +145,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             role: resolvedRole
           }
         );
-      } catch {
+      } catch (error) {
+        // #region agent log
+        fetch("http://127.0.0.1:7653/ingest/20d63d97-1111-4b46-9651-c2ddf66cae7c", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "cddc9f" },
+          body: JSON.stringify({
+            sessionId: "cddc9f",
+            runId: "pre-fix",
+            hypothesisId: "H5",
+            location: "src/contexts/AuthContext.tsx:onAuthStateChangedCatch",
+            message: "auth flow failed in callback",
+            data: { error: error instanceof Error ? error.message : "unknown" },
+            timestamp: Date.now()
+          })
+        }).catch(() => {});
+        // #endregion
         setProfile(null);
         setRole(null);
       } finally {
