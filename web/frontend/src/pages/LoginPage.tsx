@@ -1,7 +1,6 @@
 import { FormEvent, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { isFirebaseConfigured } from "../lib/firebase";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { PasswordInput } from "../components/ui/password-input";
@@ -27,7 +26,7 @@ export function LoginPage() {
     try {
       await login(fullName.trim(), password);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Ошибка входа. Проверьте ФИО и пароль.");
+      setError(err instanceof Error ? err.message : "Ошибка входа. Проверьте ФамилияИО и пароль.");
     } finally {
       setLoading(false);
     }
@@ -45,7 +44,7 @@ export function LoginPage() {
           <p className="mt-1 text-sm text-slate-100/90">Контроль изоляции трубопроводов</p>
         </div>
         <div className="space-y-1">
-          <Label htmlFor="login-fullname">ФИО</Label>
+          <Label htmlFor="login-fullname">ФамилияИО</Label>
           <Input
             id="login-fullname"
             type="text"
@@ -54,7 +53,7 @@ export function LoginPage() {
             onChange={(e) => setFullName(e.target.value)}
             aria-invalid={!!error}
             aria-describedby={error ? "login-error" : undefined}
-            placeholder="Как в списке пользователей, можно без отчества"
+            placeholder="Как в системе: ИвановИИ"
             required
           />
         </div>
@@ -89,13 +88,6 @@ export function LoginPage() {
         <p className="text-center text-xs text-slate-500 theme-dark:text-slate-400">
           Нет аккаунта? Откройте регистрацию и создайте пользователя.
         </p>
-        {!isFirebaseConfigured && (
-          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 theme-dark:border-slate-700 theme-dark:bg-slate-800/90 theme-dark:text-slate-300">
-            Demo: можно войти под встроенным админом или зарегистрировать локальный аккаунт.
-            <br />
-            Логин: <strong>admin</strong> · Пароль: <strong>3001</strong>
-          </div>
-        )}
       </form>
     </div>
   );

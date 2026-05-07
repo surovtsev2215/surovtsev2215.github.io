@@ -5,7 +5,6 @@ import { getStorage } from "firebase/storage";
 import { getFunctions } from "firebase/functions";
 
 const env = import.meta.env;
-const forceDemoMode = String(env.VITE_FORCE_DEMO ?? "") === "1";
 
 const firebaseConfig = {
   apiKey: (env.VITE_FIREBASE_API_KEY as string) ?? "",
@@ -17,22 +16,15 @@ const firebaseConfig = {
 };
 
 export const isFirebaseConfigured =
-  !forceDemoMode && Object.values(firebaseConfig).every((v) => typeof v === "string" && v.length > 0);
+  Object.values(firebaseConfig).every((v) => typeof v === "string" && v.length > 0);
 
-// Заглушки нужны только чтобы initializeApp/getAuth/etc. не падали при импорте в demo-режиме
-// (когда переменные окружения VITE_FIREBASE_* не заданы и приложение работает на localStorage).
-const safeConfig = isFirebaseConfigured
-  ? firebaseConfig
-  : {
-      apiKey: "demo",
-      authDomain: "demo.firebaseapp.com",
-      projectId: "demo",
-      storageBucket: "demo.appspot.com",
-      messagingSenderId: "0",
-      appId: "demo"
-    };
+if (!isFirebaseConfigured) {
+  throw new Error(
+    "Firebase не настроен. Заполните VITE_FIREBASE_* в web/frontend/.env.local. Demo-режим отключен."
+  );
+}
 
-const app = initializeApp(safeConfig);
+const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);

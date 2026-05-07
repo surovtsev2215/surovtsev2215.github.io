@@ -9,10 +9,7 @@ import { httpsCallable } from "firebase/functions";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db, functions } from "../lib/firebase";
 import type { Profile, UserRole } from "../types";
-import { isFirebaseConfigured } from "../lib/firebase";
-import { getDemoUsers, saveDemoUsers } from "../lib/demoUsers";
-import { normalizeFullName } from "../lib/normalizeFullName";
-import { syntheticEmailForUid } from "../lib/syntheticUserEmail";
+import { formatFullNameForDisplay } from "../lib/normalizeFullName";
 
 interface AuthContextValue {
   user: User | null;
@@ -37,7 +34,7 @@ const registerByFullNameFn = httpsCallable<{ fullName: string; password: string 
 
 function userMessageFromLoginError(error: unknown): string {
   const code = typeof error === "object" && error && "code" in error ? String(error.code) : "";
-  if (code.includes("not-found")) return "Пользователь с таким ФИО не найден.";
+  if (code.includes("not-found")) return "Пользователь с таким ФамилияИО не найден.";
   if (code.includes("permission-denied")) return "Неверный пароль.";
   if (code.includes("resource-exhausted")) return "Слишком много попыток. Повторите позже.";
   if (code.includes("unavailable")) return "Сервис входа временно недоступен. Проверьте интернет.";
@@ -48,8 +45,9 @@ function userMessageFromLoginError(error: unknown): string {
 
 function userMessageFromRegisterError(error: unknown): string {
   const code = typeof error === "object" && error && "code" in error ? String(error.code) : "";
-  if (code.includes("already-exists")) return "Пользователь с таким ФИО уже существует.";
-  if (code.includes("invalid-argument")) return "Проверьте ФИО и пароль (минимум 6 символов).";
+  if (code.includes("already-exists")) return "Пользователь с таким ФамилияИО уже существует.";
+  if (code.includes("invalid-argument"))
+    return "Проверьте имя и пароль. Для обычной регистрации требуется ФамилияИО с отчеством.";
   if (code.includes("resource-exhausted")) return "Слишком много попыток регистрации. Повторите позже.";
   if (code.includes("unavailable")) return "Сервис регистрации временно недоступен. Проверьте интернет.";
   if (code.includes("deadline-exceeded")) return "Превышено время ожидания регистрации. Попробуйте снова.";
@@ -64,39 +62,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!isFirebaseConfigured) {
-      const saved = localStorage.getItem("pto-demo-user");
-      try {
-        if (saved) {
-          const parsed = JSON.parse(saved) as {
-            role: UserRole;
-            fullName: string;
-            email: string;
-            uid?: string;
-          };
-          setRole(parsed.role);
-          const fallbackUid =
-            parsed.role === "admin"
-              ? "demo-admin"
-              : parsed.role === "director"
-                ? "demo-director"
-                : "demo-isolator";
-          setProfile({
-            uid: parsed.uid ?? fallbackUid,
-            email: parsed.email,
-            fullName: parsed.fullName,
-            role: parsed.role
-          });
-        }
-      } catch {
-        localStorage.removeItem("pto-demo-user");
-        setProfile(null);
-        setRole(null);
-      }
-      setLoading(false);
-      return;
-    }
-
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       try {
         setUser(firebaseUser);
@@ -147,34 +112,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       role,
       loading,
       login: async (fullName, password) => {
-        if (!isFirebaseConfigured) {
-          const norm = normalizeFullName(fullName);
-          if (!norm) throw new Error("Введите ФИО.");
-          const matched = getDemoUsers().find(
-            (u) => normalizeFullName(u.fullName) === norm && u.password === password
-          );
-          if (matched) {
-            const saved = {
-              role: matched.role as UserRole,
-              fullName: matched.fullName,
-              email: matched.email,
-              uid: matched.uid
-            };
-            localStorage.setItem("pto-demo-user", JSON.stringify(saved));
-            setRole(saved.role);
-            setProfile({
-              uid: saved.uid,
-              email: saved.email,
-              fullName: saved.fullName,
-              role: saved.role
-            });
-            return;
-          }
-          throw new Error("Проверьте ФИО и пароль.");
-        }
-
         try {
-          const { data } = await loginByFullNameFn({ fullName: fullName.trim(), password });
+          const { data } = await loginByFullNameFn({ fullName: formatFullNameForDisplay(fullName), password });
           if (!data?.token) throw new Error("Сервер не вернул токен входа.");
           await signInWithCustomToken(auth, data.token);
         } catch (error) {
@@ -182,43 +121,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       },
       register: async (fullName, password) => {
-        if (!isFirebaseConfigured) {
-          const norm = normalizeFullName(fullName);
-          if (!norm) throw new Error("Введите ФИО.");
-          if (password.length < 6) throw new Error("Пароль должен быть не короче 6 символов.");
-          const users = getDemoUsers();
-          const exists = users.some((u) => normalizeFullName(u.fullName) === norm);
-          if (exists) throw new Error("Пользователь с таким ФИО уже существует.");
-
-          const uid = `demo-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-          const created = {
-            uid,
-            role: "isolator" as UserRole,
-            fullName: fullName.trim(),
-            email: syntheticEmailForUid(uid),
-            password
-          };
-          saveDemoUsers([...users, created]);
-          localStorage.setItem(
-            "pto-demo-user",
-            JSON.stringify({
-              role: created.role,
-              fullName: created.fullName,
-              email: created.email,
-              uid: created.uid
-            })
-          );
-          setRole(created.role);
-          setProfile({
-            uid: created.uid,
-            email: created.email,
-            fullName: created.fullName,
-            role: created.role
-          });
-          return;
-        }
+        const normalizedDisplayName = formatFullNameForDisplay(fullName);
         try {
-          const { data } = await registerByFullNameFn({ fullName: fullName.trim(), password });
+          const { data } = await registerByFullNameFn({ fullName: normalizedDisplayName, password });
           if (!data?.token) throw new Error("Сервер не вернул токен регистрации.");
           await signInWithCustomToken(auth, data.token);
         } catch (error) {
@@ -226,12 +131,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       },
       logout: async () => {
-        if (!isFirebaseConfigured) {
-          localStorage.removeItem("pto-demo-user");
-          setRole(null);
-          setProfile(null);
-          return;
-        }
         await signOut(auth);
       }
     }),

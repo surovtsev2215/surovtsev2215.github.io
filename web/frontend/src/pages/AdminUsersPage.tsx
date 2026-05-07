@@ -16,6 +16,7 @@ import {
 import { isFirebaseConfigured } from "../lib/firebase";
 import { functions } from "../lib/firebase";
 import type { UserRole } from "../types";
+import { formatFullNameForDisplay, hasPatronymic } from "../lib/normalizeFullName";
 
 export function AdminUsersPage() {
   const [fullName, setFullName] = useState("");
@@ -40,7 +41,11 @@ export function AdminUsersPage() {
 
   function addDemoUser() {
     if (!fullName.trim() || password.length < 6) {
-      toast.error("Заполните ФИО и пароль (минимум 6 символов).");
+      toast.error("Заполните ФамилияИО и пароль (минимум 6 символов).");
+      return;
+    }
+    if (!hasPatronymic(fullName)) {
+      toast.error("Укажите ФамилияИО с отчеством (например: ИвановИИ).");
       return;
     }
     try {
@@ -57,8 +62,8 @@ export function AdminUsersPage() {
 
   function copyCreds(targetFullName: string, targetPassword: string) {
     void navigator.clipboard
-      .writeText(`${targetFullName} / ${targetPassword}`)
-      .then(() => toast.success("ФИО и пароль скопированы"))
+      .writeText(`${formatFullNameForDisplay(targetFullName)} / ${targetPassword}`)
+      .then(() => toast.success("ФамилияИО и пароль скопированы"))
       .catch(() => toast.error("Не удалось скопировать данные"));
   }
 
@@ -90,6 +95,10 @@ export function AdminUsersPage() {
 
   function saveEdit() {
     if (!editUid) return;
+    if (!hasPatronymic(editName)) {
+      toast.error("Укажите ФамилияИО с отчеством (например: ИвановИИ).");
+      return;
+    }
     try {
       updateDemoUser(editUid, { fullName: editName, password: editPassword, role: editRole });
       setVersion((v) => v + 1);
@@ -102,7 +111,11 @@ export function AdminUsersPage() {
 
   async function addFirebaseUser() {
     if (!remoteFullName.trim() || remotePassword.length < 6) {
-      toast.error("Заполните ФИО и пароль (минимум 6 символов).");
+      toast.error("Заполните ФамилияИО и пароль (минимум 6 символов).");
+      return;
+    }
+    if (!hasPatronymic(remoteFullName)) {
+      toast.error("Укажите ФамилияИО с отчеством (например: ИвановИИ).");
       return;
     }
     setRemoteLoading(true);
@@ -129,7 +142,7 @@ export function AdminUsersPage() {
       <div className="surface-highlight p-4 sm:p-5">
         <h2 className="text-xl font-semibold tracking-tight">Пользователи</h2>
         <p className="mt-1 text-sm text-slate-200/95">
-          Управление доступом по ФИО и паролю в demo-среде.
+          Управление доступом по ФамилияИО и паролю в demo-среде.
         </p>
       </div>
       <div className="divider-fade" />
@@ -140,14 +153,17 @@ export function AdminUsersPage() {
               <p className="text-sm text-slate-600 theme-dark:text-slate-300">
                 Demo-режим полностью повторяет рабочее управление пользователями.
               </p>
+              <p className="text-xs text-slate-500 theme-dark:text-slate-400">
+                Отчество обязательно (формат: ФамилияИО, например: ИвановИИ).
+              </p>
               <div className="grid gap-2 md:grid-cols-3">
                 <div>
-                  <Label htmlFor="demo-fullname">ФИО</Label>
+                  <Label htmlFor="demo-fullname">ФамилияИО</Label>
                   <Input
                     id="demo-fullname"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Иванов Иван или Иванов И.И."
+                    placeholder="ИвановИИ"
                   />
                 </div>
                 <div>
@@ -180,14 +196,14 @@ export function AdminUsersPage() {
 
           <Card>
             <CardContent className="p-4">
-              <p className="mb-2 text-sm text-slate-600 theme-dark:text-slate-300">Учётные записи (ФИО для входа):</p>
+              <p className="mb-2 text-sm text-slate-600 theme-dark:text-slate-300">Учётные записи (ФамилияИО для входа):</p>
               <div className="grid gap-2 text-sm md:grid-cols-2">
                 {users.map((user) => (
                   <div key={user.uid} className="surface-muted soft-ring p-3">
                     {editUid === user.uid ? (
                       <div className="space-y-2">
                         <div>
-                          <Label htmlFor={`edit-name-${user.uid}`}>ФИО</Label>
+                          <Label htmlFor={`edit-name-${user.uid}`}>ФамилияИО</Label>
                           <Input
                             id={`edit-name-${user.uid}`}
                             value={editName}
@@ -229,7 +245,7 @@ export function AdminUsersPage() {
                     ) : (
                       <>
                         <div className="flex items-center justify-between">
-                          <div className="font-semibold text-primary theme-dark:text-accent">{user.fullName}</div>
+                          <div className="font-semibold text-primary theme-dark:text-accent">{formatFullNameForDisplay(user.fullName)}</div>
                           <span
                             className={`badge-live rounded-full border px-2 py-0.5 text-xs ${
                               user.role === "admin"
@@ -252,9 +268,9 @@ export function AdminUsersPage() {
                             variant="secondary"
                             size="sm"
                             className="w-full sm:w-auto"
-                            onClick={() => copyCreds(user.fullName, user.password)}
+                            onClick={() => copyCreds(formatFullNameForDisplay(user.fullName), user.password)}
                           >
-                            Копировать ФИО и пароль
+                            Копировать ФамилияИО и пароль
                           </Button>
                           <Button
                             type="button"
@@ -299,7 +315,7 @@ export function AdminUsersPage() {
                           : item.action === "update"
                             ? "Обновлён"
                             : "Удалён"}{" "}
-                        пользователь: {item.fullName}
+                        пользователь: {formatFullNameForDisplay(item.fullName)}
                       </span>
                       <span className="text-slate-500 theme-dark:text-slate-400">
                         {new Date(item.at).toLocaleString("ru-RU")}
@@ -317,14 +333,17 @@ export function AdminUsersPage() {
             <p className="text-sm text-slate-600 theme-dark:text-slate-300">
               Создание пользователей в Firebase. По умолчанию роль - изолировщик.
             </p>
+            <p className="text-xs text-slate-500 theme-dark:text-slate-400">
+              Отчество обязательно (формат: ФамилияИО, например: ИвановИИ).
+            </p>
             <div className="grid gap-2 md:grid-cols-3">
               <div>
-                <Label htmlFor="firebase-fullname">ФИО</Label>
+                <Label htmlFor="firebase-fullname">ФамилияИО</Label>
                 <Input
                   id="firebase-fullname"
                   value={remoteFullName}
                   onChange={(e) => setRemoteFullName(e.target.value)}
-                  placeholder="Иванов Иван Иванович"
+                  placeholder="ИвановИИ"
                 />
               </div>
               <div>

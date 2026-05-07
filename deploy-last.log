@@ -1,5 +1,5 @@
 ================================================== 
-Safe deploy started: 07.05.2026 21:19:17,28 
+Safe deploy started: 07.05.2026 22:09:22,14 
 Root: C:\Users\Surovcev\PTO_Project 
 Dry run: 0 
 ================================================== 
@@ -20,42 +20,43 @@ rendering chunks...
 computing gzip size...
 [2mdist/[22m[32mmanifest.webmanifest                         [39m[1m[2m  0.34 kB[22m[1m[22m
 [2mdist/[22m[32mindex.html                                   [39m[1m[2m  1.48 kB[22m[1m[22m[2m │ gzip:   0.74 kB[22m
-[2mdist/[22m[35massets/index-B8GrHDz5.css                    [39m[1m[2m 39.60 kB[22m[1m[22m[2m │ gzip:   7.39 kB[22m
-[2mdist/[22m[36massets/label-Q7kZy9Zy.js                     [39m[1m[2m  0.36 kB[22m[1m[22m[2m │ gzip:   0.27 kB[22m
-[2mdist/[22m[36massets/password-input-D-Iz2Be8.js            [39m[1m[2m  0.70 kB[22m[1m[22m[2m │ gzip:   0.48 kB[22m
-[2mdist/[22m[36massets/card-Cn68Ydes.js                      [39m[1m[2m  0.71 kB[22m[1m[22m[2m │ gzip:   0.33 kB[22m
-[2mdist/[22m[36massets/input-DtG-gNLS.js                     [39m[1m[2m  0.72 kB[22m[1m[22m[2m │ gzip:   0.40 kB[22m
-[2mdist/[22m[36massets/exportReports-Dcwyf_Bq.js             [39m[1m[2m  1.72 kB[22m[1m[22m[2m │ gzip:   1.05 kB[22m
-[2mdist/[22m[36massets/useExecutiveReportsState-DVbHuwPk.js  [39m[1m[2m  1.74 kB[22m[1m[22m[2m │ gzip:   0.86 kB[22m
-[2mdist/[22m[36massets/DirectorProfilePage-CXiuLDB3.js       [39m[1m[2m  1.89 kB[22m[1m[22m[2m │ gzip:   0.94 kB[22m
-[2mdist/[22m[36massets/LoginPage-C0wRQNga.js                 [39m[1m[2m  3.07 kB[22m[1m[22m[2m │ gzip:   1.60 kB[22m
-[2mdist/[22m[36massets/reportStore-DG0mzOEu.js               [39m[1m[2m  3.10 kB[22m[1m[22m[2m │ gzip:   1.34 kB[22m
-[2mdist/[22m[36massets/RegisterPage-2jivJD_Q.js              [39m[1m[2m  3.14 kB[22m[1m[22m[2m │ gzip:   1.53 kB[22m
-[2mdist/[22m[36massets/DirectorReportsPage-CORngRmO.js       [39m[1m[2m  3.89 kB[22m[1m[22m[2m │ gzip:   1.78 kB[22m
-[2mdist/[22m[36massets/DirectorOverviewPage-CKOXLk4F.js      [39m[1m[2m  4.44 kB[22m[1m[22m[2m │ gzip:   1.67 kB[22m
-[2mdist/[22m[36massets/HistoryPage-DBc52-3A.js               [39m[1m[2m  5.16 kB[22m[1m[22m[2m │ gzip:   2.15 kB[22m
+[2mdist/[22m[35massets/index-q4DiuO5j.css                    [39m[1m[2m 40.60 kB[22m[1m[22m[2m │ gzip:   7.57 kB[22m
+[2mdist/[22m[36massets/syntheticUserEmail-DcdzgGzH.js        [39m[1m[2m  0.12 kB[22m[1m[22m[2m │ gzip:   0.12 kB[22m
+[2mdist/[22m[36massets/label-BCBKiIbI.js                     [39m[1m[2m  0.36 kB[22m[1m[22m[2m │ gzip:   0.27 kB[22m
+[2mdist/[22m[36massets/password-input-DnZFnVq2.js            [39m[1m[2m  0.70 kB[22m[1m[22m[2m │ gzip:   0.48 kB[22m
+[2mdist/[22m[36massets/card-BKLNBQsi.js                      [39m[1m[2m  0.71 kB[22m[1m[22m[2m │ gzip:   0.33 kB[22m
+[2mdist/[22m[36massets/input-Di66dHaD.js                     [39m[1m[2m  0.72 kB[22m[1m[22m[2m │ gzip:   0.40 kB[22m
+[2mdist/[22m[36massets/exportReports-Ct2ruZwT.js             [39m[1m[2m  1.72 kB[22m[1m[22m[2m │ gzip:   1.05 kB[22m
+[2mdist/[22m[36massets/useExecutiveReportsState-Dc9R9m-7.js  [39m[1m[2m  1.74 kB[22m[1m[22m[2m │ gzip:   0.86 kB[22m
+[2mdist/[22m[36massets/DirectorProfilePage-Sbb156rG.js       [39m[1m[2m  1.91 kB[22m[1m[22m[2m │ gzip:   0.96 kB[22m
+[2mdist/[22m[36massets/LoginPage-CROKQFn3.js                 [39m[1m[2m  2.66 kB[22m[1m[22m[2m │ gzip:   1.42 kB[22m
+[2mdist/[22m[36massets/reportStore-UrpaRUUp.js               [39m[1m[2m  3.10 kB[22m[1m[22m[2m │ gzip:   1.34 kB[22m
+[2mdist/[22m[36massets/RegisterPage-CsNS6KwK.js              [39m[1m[2m  3.30 kB[22m[1m[22m[2m │ gzip:   1.58 kB[22m
+[2mdist/[22m[36massets/DirectorReportsPage-Dpe1QLd7.js       [39m[1m[2m  3.89 kB[22m[1m[22m[2m │ gzip:   1.78 kB[22m
+[2mdist/[22m[36massets/DirectorOverviewPage-BsbG3_A6.js      [39m[1m[2m  4.44 kB[22m[1m[22m[2m │ gzip:   1.67 kB[22m
+[2mdist/[22m[36massets/HistoryPage-DHzi4TYp.js               [39m[1m[2m  5.16 kB[22m[1m[22m[2m │ gzip:   2.15 kB[22m
 [2mdist/[22m[36massets/workbox-window.prod.es5-BqEJf4Xk.js   [39m[1m[2m  5.71 kB[22m[1m[22m[2m │ gzip:   2.34 kB[22m
-[2mdist/[22m[36massets/AdminDashboardPage-DIS5YmYP.js        [39m[1m[2m  8.10 kB[22m[1m[22m[2m │ gzip:   2.77 kB[22m
-[2mdist/[22m[36massets/ReportDetailPage-Baasf2NX.js          [39m[1m[2m  8.29 kB[22m[1m[22m[2m │ gzip:   3.17 kB[22m
-[2mdist/[22m[36massets/AdminUsersPage-4hYJUVld.js            [39m[1m[2m  8.60 kB[22m[1m[22m[2m │ gzip:   2.71 kB[22m
+[2mdist/[22m[36massets/AdminDashboardPage-WpKpxwQl.js        [39m[1m[2m  8.10 kB[22m[1m[22m[2m │ gzip:   2.76 kB[22m
+[2mdist/[22m[36massets/ReportDetailPage-CIc9cmrr.js          [39m[1m[2m  8.29 kB[22m[1m[22m[2m │ gzip:   3.17 kB[22m
+[2mdist/[22m[36massets/AdminUsersPage-B430ryKg.js            [39m[1m[2m 11.92 kB[22m[1m[22m[2m │ gzip:   3.73 kB[22m
 [2mdist/[22m[36massets/purify.es-BwoZCkIS.js                 [39m[1m[2m 22.03 kB[22m[1m[22m[2m │ gzip:   8.77 kB[22m
 [2mdist/[22m[36massets/vendor-ui-CEtRNUVF.js                 [39m[1m[2m 32.88 kB[22m[1m[22m[2m │ gzip:   9.42 kB[22m
-[2mdist/[22m[36massets/FormPage-BdZ_QDE6.js                  [39m[1m[2m 36.07 kB[22m[1m[22m[2m │ gzip:   7.36 kB[22m
-[2mdist/[22m[36massets/jspdf.plugin.autotable-B8VODjeF.js    [39m[1m[2m 39.57 kB[22m[1m[22m[2m │ gzip:  12.78 kB[22m
+[2mdist/[22m[36massets/FormPage-C5XygAEg.js                  [39m[1m[2m 36.32 kB[22m[1m[22m[2m │ gzip:   7.42 kB[22m
+[2mdist/[22m[36massets/jspdf.plugin.autotable-CEis72YP.js    [39m[1m[2m 39.57 kB[22m[1m[22m[2m │ gzip:  12.78 kB[22m
 [2mdist/[22m[36massets/vendor-firebase-core-DUew2sQ1.js      [39m[1m[2m 48.06 kB[22m[1m[22m[2m │ gzip:  11.88 kB[22m
-[2mdist/[22m[36massets/index-EvnHa-9b.js                     [39m[1m[2m 58.52 kB[22m[1m[22m[2m │ gzip:  18.91 kB[22m
+[2mdist/[22m[36massets/index-Bchyabop.js                     [39m[1m[2m 55.42 kB[22m[1m[22m[2m │ gzip:  18.10 kB[22m
 [2mdist/[22m[36massets/vendor-firebase-auth-BuayuZMe.js      [39m[1m[2m114.75 kB[22m[1m[22m[2m │ gzip:  23.46 kB[22m
-[2mdist/[22m[36massets/index.es-5oYi2YOk.js                  [39m[1m[2m150.93 kB[22m[1m[22m[2m │ gzip:  51.65 kB[22m
+[2mdist/[22m[36massets/index.es-CyAg8ZVD.js                  [39m[1m[2m150.93 kB[22m[1m[22m[2m │ gzip:  51.65 kB[22m
 [2mdist/[22m[36massets/html2canvas.esm-CBrSDip1.js           [39m[1m[2m201.42 kB[22m[1m[22m[2m │ gzip:  48.03 kB[22m
 [2mdist/[22m[36massets/vendor-react-DKZcZWGF.js              [39m[1m[2m211.68 kB[22m[1m[22m[2m │ gzip:  67.53 kB[22m
-[2mdist/[22m[36massets/jspdf.es.min-BGD4b-7P.js              [39m[1m[2m357.91 kB[22m[1m[22m[2m │ gzip: 118.09 kB[22m
+[2mdist/[22m[36massets/jspdf.es.min-9C2PHwAb.js              [39m[1m[2m357.91 kB[22m[1m[22m[2m │ gzip: 118.09 kB[22m
 [2mdist/[22m[36massets/vendor-firebase-data-BiOZLRDL.js      [39m[1m[2m412.63 kB[22m[1m[22m[2m │ gzip: 104.12 kB[22m
 [2mdist/[22m[36massets/xlsx-D_0l8YDs.js                      [39m[1m[2m429.03 kB[22m[1m[22m[2m │ gzip: 143.08 kB[22m
-[32m✓ built in 3.31s[39m
+[32m✓ built in 3.36s[39m
 
 PWA v0.20.5
 mode      generateSW
-precache  40 entries (2178.75 KiB)
+precache  41 entries (2180.42 KiB)
 files generated
   dist/sw.js
   dist/workbox-ee9d8b34.js
@@ -66,6 +67,6 @@ files generated
 
 [6/11] Return to project root 
 [7/11] Check pending changes 
-Changes count: 1 
+Changes count: 23 
 Demo flag: unknown 
 [8/11] Auto-commit prepared changes 

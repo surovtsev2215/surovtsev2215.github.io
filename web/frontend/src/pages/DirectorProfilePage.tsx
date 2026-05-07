@@ -1,6 +1,7 @@
 import { UserRound } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { Card, CardContent } from "../components/ui/card";
+import { formatFullNameForDisplay } from "../lib/normalizeFullName";
 
 export function DirectorProfilePage() {
   const { profile } = useAuth();
@@ -22,8 +23,8 @@ export function DirectorProfilePage() {
       <Card className="soft-ring">
         <CardContent className="space-y-3 p-3 sm:p-4">
           <div>
-            <div className="text-xs text-slate-500 theme-dark:text-slate-400">ФИО</div>
-            <div className="text-base font-semibold">{profile?.fullName ?? "—"}</div>
+            <div className="text-xs text-slate-500 theme-dark:text-slate-400">ФамилияИО</div>
+            <div className="text-base font-semibold">{profile?.fullName ? formatFullNameForDisplay(profile.fullName) : "—"}</div>
           </div>
           <div>
             <div className="text-xs text-slate-500 theme-dark:text-slate-400">Роль</div>

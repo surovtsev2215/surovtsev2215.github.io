@@ -5,8 +5,8 @@ setlocal EnableExtensions EnableDelayedExpansion
 set "ROOT_DIR=%~dp0"
 if "%ROOT_DIR:~-1%"=="\" set "ROOT_DIR=%ROOT_DIR:~0,-1%"
 set "LOG_FILE=%ROOT_DIR%\deploy-last.log"
-set "DEBUG_LOG_FILE=%ROOT_DIR%\debug-b6b83d.log"
-set "DEBUG_RUN_ID=pre-fix-%RANDOM%-%RANDOM%"
+set "DEBUG_LOG_FILE=%ROOT_DIR%\debug-cddc9f.log"
+set "DEBUG_RUN_ID=deploy-%RANDOM%-%RANDOM%"
 set "DRY_RUN=0"
 
 if /I "%~1"=="--dry-run" set "DRY_RUN=1"
@@ -17,11 +17,11 @@ echo Root: %ROOT_DIR% >> "%LOG_FILE%"
 echo Dry run: %DRY_RUN% >> "%LOG_FILE%"
 echo ================================================== >> "%LOG_FILE%"
 :: #region agent log
-powershell -NoProfile -Command "$o=@{sessionId='b6b83d';runId='%DEBUG_RUN_ID%';hypothesisId='H1';location='deploy-site.bat:16';message='deploy script start';data=@{dryRun='%DRY_RUN%';root='%ROOT_DIR%'};timestamp=[DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()};($o|ConvertTo-Json -Compress)|Add-Content -LiteralPath '%DEBUG_LOG_FILE%'" >nul 2>nul
+powershell -NoProfile -Command "$o=@{sessionId='cddc9f';runId='%DEBUG_RUN_ID%';hypothesisId='H5';location='deploy-site.bat:start';message='deploy script start';data=@{dryRun='%DRY_RUN%';root='%ROOT_DIR%'};timestamp=[DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()};($o|ConvertTo-Json -Compress)|Add-Content -LiteralPath '%DEBUG_LOG_FILE%'" >nul 2>nul
 :: #endregion
 echo.
 echo ================================================
-echo Безопасная публикация сайта (ПТО)
+echo ПТО · Безопасная публикация сайта
 echo ================================================
 echo Шаг 1/3: Проверка готовности
 echo Шаг 2/3: Проверка сборки
@@ -45,9 +45,6 @@ if errorlevel 1 (
 call :step "[3/11] Ensure branch is publish branch"
 for /f %%I in ('git branch --show-current') do set "CURRENT_BRANCH=%%I"
 echo Current branch: %CURRENT_BRANCH% >> "%LOG_FILE%"
-:: #region agent log
-powershell -NoProfile -Command "$o=@{sessionId='b6b83d';runId='%DEBUG_RUN_ID%';hypothesisId='H1';location='deploy-site.bat:45';message='detected current branch';data=@{branch='%CURRENT_BRANCH%';dryRun='%DRY_RUN%'};timestamp=[DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()};($o|ConvertTo-Json -Compress)|Add-Content -LiteralPath '%DEBUG_LOG_FILE%'" >nul 2>nul
-:: #endregion
 set "PUBLISH_BRANCH="
 if /I "%CURRENT_BRANCH%"=="main" set "PUBLISH_BRANCH=main"
 if /I "%CURRENT_BRANCH%"=="master" set "PUBLISH_BRANCH=master"
@@ -60,9 +57,6 @@ if "%PUBLISH_BRANCH%"=="" (
   if not errorlevel 1 set "PUBLISH_BRANCH=master"
 )
 if "%PUBLISH_BRANCH%"=="" set "PUBLISH_BRANCH=main"
-:: #region agent log
-powershell -NoProfile -Command "$o=@{sessionId='b6b83d';runId='%DEBUG_RUN_ID%';hypothesisId='H5';location='deploy-site.bat:56';message='resolved publish branch';data=@{currentBranch='%CURRENT_BRANCH%';publishBranch='%PUBLISH_BRANCH%'};timestamp=[DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()};($o|ConvertTo-Json -Compress)|Add-Content -LiteralPath '%DEBUG_LOG_FILE%'" >nul 2>nul
-:: #endregion
 if /I not "%CURRENT_BRANCH%"=="%PUBLISH_BRANCH%" (
   if "%DRY_RUN%"=="1" (
     call :step "Dry run mode: branch is not publish branch, production push would be blocked"
@@ -74,13 +68,7 @@ if /I not "%CURRENT_BRANCH%"=="%PUBLISH_BRANCH%" (
     set "HAS_LOCAL_CHANGES=0"
     for /f %%I in ('git status --porcelain ^| find /c /v ""') do set "BRANCH_CHANGE_COUNT=%%I"
     if not "!BRANCH_CHANGE_COUNT!"=="0" set "HAS_LOCAL_CHANGES=1"
-    :: #region agent log
-    powershell -NoProfile -Command "$o=@{sessionId='b6b83d';runId='%DEBUG_RUN_ID%';hypothesisId='H2';location='deploy-site.bat:60';message='branch mismatch precheck changes';data=@{branch='%CURRENT_BRANCH%';changeCount='!BRANCH_CHANGE_COUNT!';hasLocalChanges='!HAS_LOCAL_CHANGES!'};timestamp=[DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()};($o|ConvertTo-Json -Compress)|Add-Content -LiteralPath '%DEBUG_LOG_FILE%'" >nul 2>nul
-    :: #endregion
     if "!HAS_LOCAL_CHANGES!"=="1" (
-      :: #region agent log
-      powershell -NoProfile -Command "$o=@{sessionId='b6b83d';runId='%DEBUG_RUN_ID%';hypothesisId='H3';location='deploy-site.bat:63';message='blocked before auto-switch due local changes';data=@{branch='%CURRENT_BRANCH%';changeCount='!BRANCH_CHANGE_COUNT!'};timestamp=[DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()};($o|ConvertTo-Json -Compress)|Add-Content -LiteralPath '%DEBUG_LOG_FILE%'" >nul 2>nul
-      :: #endregion
       call :fail "Есть локальные изменения. Сначала сохраните изменения, затем переключитесь на %PUBLISH_BRANCH% и повторите запуск."
       goto :eof
     )
@@ -136,9 +124,6 @@ set "HAS_CHANGES=0"
 for /f %%I in ('git status --porcelain ^| find /c /v ""') do set "CHANGES_COUNT=%%I"
 if not "%CHANGES_COUNT%"=="0" set "HAS_CHANGES=1"
 echo Changes count: %CHANGES_COUNT% >> "%LOG_FILE%"
-:: #region agent log
-powershell -NoProfile -Command "$o=@{sessionId='b6b83d';runId='%DEBUG_RUN_ID%';hypothesisId='H4';location='deploy-site.bat:126';message='general pending changes check';data=@{changeCount='%CHANGES_COUNT%';hasChanges='%HAS_CHANGES%'};timestamp=[DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()};($o|ConvertTo-Json -Compress)|Add-Content -LiteralPath '%DEBUG_LOG_FILE%'" >nul 2>nul
-:: #endregion
 
 set "DEMO_FLAG=unknown"
 for /f "usebackq tokens=1,* delims==" %%A in (`type "%ROOT_DIR%\web\frontend\.env.local" 2^>nul ^| findstr /R /I "^VITE_FORCE_DEMO="`) do set "DEMO_FLAG=%%B"
@@ -147,7 +132,7 @@ if /I "%DEMO_FLAG%"=="1" (
   if "%DRY_RUN%"=="1" (
     call :step "Dry run mode: demo flag is ON, publish would be blocked"
   ) else (
-    call :fail "Обнаружен DEMO режим (VITE_FORCE_DEMO=1). Сначала запустите ярлык 'ПТО - Онлайн режим'."
+    call :fail "Обнаружен DEMO режим (VITE_FORCE_DEMO=1). Сначала запустите ярлык 'ПТО · 1. Включить Онлайн'."
     goto :eof
   )
 )
@@ -199,6 +184,9 @@ call :step "[11/11] Final git status"
 git status --short >> "%LOG_FILE%" 2>&1
 
 :done
+:: #region agent log
+powershell -NoProfile -Command "$o=@{sessionId='cddc9f';runId='%DEBUG_RUN_ID%';hypothesisId='H5';location='deploy-site.bat:done';message='deploy script finished';data=@{dryRun='%DRY_RUN%'};timestamp=[DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()};($o|ConvertTo-Json -Compress)|Add-Content -LiteralPath '%DEBUG_LOG_FILE%'" >nul 2>nul
+:: #endregion
 echo.
 echo Safe deploy flow finished.
 echo Log file: "%LOG_FILE%"
@@ -220,6 +208,9 @@ echo %~1 >> "%LOG_FILE%"
 goto :eof
 
 :fail
+:: #region agent log
+powershell -NoProfile -Command "$o=@{sessionId='cddc9f';runId='%DEBUG_RUN_ID%';hypothesisId='H2';location='deploy-site.bat:fail';message='deploy script failed';data=@{reason='%~1'};timestamp=[DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()};($o|ConvertTo-Json -Compress)|Add-Content -LiteralPath '%DEBUG_LOG_FILE%'" >nul 2>nul
+:: #endregion
 echo.
 echo ERROR: %~1
 echo ERROR: %~1 >> "%LOG_FILE%"

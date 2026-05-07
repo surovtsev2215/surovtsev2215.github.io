@@ -22,12 +22,12 @@ export function RegisterPage() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
-    if (password.length < 6) {
-      setError("Пароль должен быть не короче 6 символов.");
-      return;
-    }
     if (password !== confirmPassword) {
       setError("Пароли не совпадают.");
+      return;
+    }
+    if (!password.trim()) {
+      setError("Введите пароль.");
       return;
     }
     setLoading(true);
@@ -50,11 +50,11 @@ export function RegisterPage() {
         <div className="surface-highlight mb-5 p-4">
           <h1 className="text-2xl font-semibold">Регистрация</h1>
           <p className="mt-1 text-sm text-slate-100/90">
-            Первый зарегистрированный пользователь станет администратором, остальные — изолировщиками.
+            Первый зарегистрированный пользователь станет администратором с расширенными правами.
           </p>
         </div>
         <div className="space-y-1">
-          <Label htmlFor="register-fullname">ФИО</Label>
+          <Label htmlFor="register-fullname">ФамилияИО</Label>
           <Input
             id="register-fullname"
             type="text"
@@ -63,9 +63,12 @@ export function RegisterPage() {
             onChange={(e) => setFullName(e.target.value)}
             aria-invalid={!!error}
             aria-describedby={error ? "register-error" : undefined}
-            placeholder="Иванов Иван Иванович"
+            placeholder="Для первого входа можно любое имя"
             required
           />
+          <p className="text-xs text-slate-500 theme-dark:text-slate-400">
+            После создания первого админа обычная регистрация: ФамилияИО с отчеством.
+          </p>
         </div>
         <div className="space-y-1">
           <Label htmlFor="register-password">Пароль</Label>
@@ -76,7 +79,7 @@ export function RegisterPage() {
             onChange={(e) => setPassword(e.target.value)}
             aria-invalid={!!error}
             aria-describedby={error ? "register-error" : undefined}
-            placeholder="Минимум 6 символов"
+            placeholder="Придумайте пароль"
             required
           />
         </div>
@@ -91,7 +94,7 @@ export function RegisterPage() {
             aria-describedby={error ? "register-error" : undefined}
             required
           />
-          <p className="text-xs text-slate-500 theme-dark:text-slate-400">Минимальная длина пароля: 6 символов.</p>
+          <p className="text-xs text-slate-500 theme-dark:text-slate-400">Для первого админа пароль может быть любым непустым.</p>
         </div>
         {error && (
           <p

@@ -1,5 +1,5 @@
 import type { UserRole } from "../types";
-import { normalizeFullName } from "./normalizeFullName";
+import { formatFullNameForDisplay, hasPatronymic, normalizeFullName } from "./normalizeFullName";
 import { syntheticEmailForUid } from "./syntheticUserEmail";
 
 export interface DemoUser {
@@ -37,7 +37,7 @@ function migrateRawList(raw: unknown): DemoUser[] {
   for (const item of raw) {
     if (!item || typeof item !== "object") continue;
     const candidate = item as Partial<DemoUser>;
-    const fullName = String(candidate.fullName ?? "").trim();
+    const fullName = formatFullNameForDisplay(String(candidate.fullName ?? ""));
     const password = String(candidate.password ?? "");
     const uid = String(candidate.uid ?? "").trim() || `demo-${crypto.randomUUID()}`;
     if (!fullName || password.length < 1) continue;
@@ -104,13 +104,16 @@ export function getDemoAuditEvents(): DemoAuditEvent[] {
 }
 
 export function createDemoStaffUser(input: { fullName: string; password: string; role: "isolator" | "director" }) {
-  const fullName = input.fullName.trim();
-  if (!fullName) throw new Error("Введите ФИО.");
+  const fullName = formatFullNameForDisplay(input.fullName);
+  if (!fullName) throw new Error("Введите ФамилияИО.");
+  if (!hasPatronymic(input.fullName)) {
+    throw new Error("Укажите ФамилияИО с отчеством.");
+  }
   if (input.password.length < 6) throw new Error("Пароль должен быть не короче 6 символов.");
   const norm = normalizeFullName(fullName);
   const users = getDemoUsers();
   if (users.some((u) => normalizeFullName(u.fullName) === norm)) {
-    throw new Error("Пользователь с таким ФИО уже существует.");
+    throw new Error("Пользователь с таким ФамилияИО уже существует.");
   }
   const uid = `demo-${crypto.randomUUID()}`;
   const created: DemoUser = {
@@ -139,15 +142,18 @@ export function updateDemoUser(
   input: { fullName: string; password: string; role?: "isolator" | "director" }
 ) {
   if (!uid) throw new Error("Не указан пользователь.");
-  const fullName = input.fullName.trim();
-  if (!fullName) throw new Error("Введите ФИО.");
+  const fullName = formatFullNameForDisplay(input.fullName);
+  if (!fullName) throw new Error("Введите ФамилияИО.");
+  if (!hasPatronymic(input.fullName)) {
+    throw new Error("Укажите ФамилияИО с отчеством.");
+  }
   if (input.password.length < 6) throw new Error("Пароль должен быть не короче 6 символов.");
   const users = getDemoUsers();
   const idx = users.findIndex((u) => u.uid === uid);
   if (idx < 0) throw new Error("Пользователь не найден.");
   const norm = normalizeFullName(fullName);
   const duplicate = users.find((u) => u.uid !== uid && normalizeFullName(u.fullName) === norm);
-  if (duplicate) throw new Error("Пользователь с таким ФИО уже существует.");
+  if (duplicate) throw new Error("Пользователь с таким ФамилияИО уже существует.");
   const current = users[idx];
   const updated: DemoUser = {
     ...current,

@@ -22,6 +22,7 @@ import { Label } from "../components/ui/label";
 import { Textarea } from "../components/ui/textarea";
 import { Card, CardContent } from "../components/ui/card";
 import { usePipeList, type PipeDraft } from "../hooks/usePipeList";
+import { formatFullNameForDisplay } from "../lib/normalizeFullName";
 
 const diameters = [
   17.1,
@@ -521,7 +522,7 @@ export function FormPage() {
   const progressPercent = Math.round((doneCount / checklist.length) * 100);
 
   return (
-    <div className="page-stack pb-2">
+    <div className="page-stack pb-[calc(9rem+env(safe-area-inset-bottom))] sm:pb-3">
       <div className="surface-highlight animate-in-up p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -536,7 +537,7 @@ export function FormPage() {
 
       <Card className="border-slate-300/90 bg-slate-100/85 theme-dark:border-slate-700/90 theme-dark:bg-slate-900/80">
         <CardContent className="p-3 text-xs font-medium text-slate-700 theme-dark:text-slate-200">
-          ФИО: {profile?.fullName?.trim() || "не указано"}
+          ФамилияИО: {profile?.fullName ? formatFullNameForDisplay(profile.fullName) : "не указано"}
         </CardContent>
       </Card>
 
@@ -1209,11 +1210,17 @@ export function FormPage() {
         </div>
       </StepSection>
 
-      <StepSection
-        icon={<Wrench className="h-4 w-4" />}
-        title="Демонтаж ТИ на трубопроводах"
-      >
-        <div className="space-y-3">
+      <div>
+        <StepSection
+          icon={<Wrench className="h-4 w-4" />}
+          title="Демонтаж ТИ на трубопроводах"
+        >
+          <div className="space-y-3">
+          {!equipmentPipes.length && (
+            <p className="text-xs text-slate-500 theme-dark:text-slate-400">
+              Нажмите «Добавить трубопровод», затем заполните карточку.
+            </p>
+          )}
           {equipmentPipes.map((p, idx) => {
             const photosId = `equipment-${p.localId}-photos`;
             return (
@@ -1374,8 +1381,9 @@ export function FormPage() {
             <Plus className="h-4 w-4" aria-hidden />
             Добавить трубопровод
           </Button>
-        </div>
-      </StepSection>
+          </div>
+        </StepSection>
+      </div>
 
       <div className="hidden flex-col-reverse gap-2 pt-1 sm:flex sm:flex-row sm:justify-end">
         <Button
@@ -1393,7 +1401,7 @@ export function FormPage() {
           Для отправки достаточно заполнить любой блок: день зачета, фольма-ткань, трубопроводы или оборудование.
         </p>
       )}
-      <div className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom)+0.5rem)] left-0 right-0 z-20 px-3 sm:hidden">
+      <div className="sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom)+0.5rem)] z-20 mt-3 px-3 sm:hidden">
         <div className="mx-auto max-w-6xl">
           <div className="glass rounded-xl border p-2 shadow-card">
             <Button

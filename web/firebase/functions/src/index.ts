@@ -1,7 +1,7 @@
 import * as admin from "firebase-admin";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import bcrypt from "bcryptjs";
-import { normalizeFullName } from "./normalizeFullName.js";
+import { formatFullNameForDisplay, hasPatronymic, normalizeFullName } from "./normalizeFullName.js";
 
 if (!admin.apps.length) {
   admin.initializeApp();
@@ -73,7 +73,7 @@ export const loginByFullName = onCall({ region: "us-central1" }, async (request)
 
   const norm = normalizeFullName(fullName);
   if (!norm) {
-    throw new HttpsError("invalid-argument", "Пустое ФИО");
+    throw new HttpsError("invalid-argument", "Пустое ФамилияИО");
   }
 
   const db = admin.firestore();
@@ -158,14 +158,6 @@ export const registerByFullName = onCall({ region: "us-central1" }, async (reque
   if (typeof fullName !== "string" || typeof password !== "string") {
     throw new HttpsError("invalid-argument", "Нужны fullName и password");
   }
-  if (password.length < MIN_PASSWORD_LENGTH) {
-    throw new HttpsError("invalid-argument", `Пароль должен быть минимум ${MIN_PASSWORD_LENGTH} символов.`);
-  }
-
-  const norm = normalizeFullName(fullName);
-  if (!norm) {
-    throw new HttpsError("invalid-argument", "Пустое ФИО");
-  }
 
   const isAdmin = request.auth?.token?.role === "admin";
   if (request.auth && !isAdmin) {
@@ -173,8 +165,35 @@ export const registerByFullName = onCall({ region: "us-central1" }, async (reque
   }
 
   const db = admin.firestore();
+  const hasAnyUsersSnap = await db.collection("users").limit(1).get();
+  const isBootstrapRegistration = hasAnyUsersSnap.empty;
   const now = Date.now();
   const callerKey = !isAdmin ? extractCallerKey(request) : "";
+
+  const norm = normalizeFullName(fullName);
+  const displayFullName = formatFullNameForDisplay(fullName);
+  if (!norm) {
+    throw new HttpsError("invalid-argument", "Укажите имя для входа.");
+  }
+
+  const isSelfRegistration = !request.auth;
+  const shouldUseStrictPolicy = !isBootstrapRegistration && isSelfRegistration;
+  if (shouldUseStrictPolicy) {
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      throw new HttpsError(
+        "invalid-argument",
+        `Пароль должен быть минимум ${MIN_PASSWORD_LENGTH} символов.`
+      );
+    }
+    if (!hasPatronymic(fullName)) {
+      throw new HttpsError(
+        "invalid-argument",
+        "Для обычной регистрации укажите ФамилияИО с отчеством."
+      );
+    }
+  } else if (password.length < 1) {
+    throw new HttpsError("invalid-argument", "Пароль не может быть пустым.");
+  }
 
   if (!isAdmin) {
     const lockRef = db.collection("authRegisterRateLimits").doc(callerKey);
@@ -195,13 +214,11 @@ export const registerByFullName = onCall({ region: "us-central1" }, async (reque
   const existing = await db.collection("users").where("fullNameNormalized", "==", norm).limit(1).get();
   if (!existing.empty) {
     if (!isAdmin) await registerFailure(db, callerKey, now);
-    throw new HttpsError("already-exists", "Пользователь с таким ФИО уже существует.");
+    throw new HttpsError("already-exists", "Пользователь с таким ФамилияИО уже существует.");
   }
 
   // Bootstrap path: the very first registered account becomes admin automatically.
-  // This removes the manual "set role in Firestore" step for initial setup.
-  const hasAnyUsersSnap = await db.collection("users").limit(1).get();
-  const isBootstrapRegistration = hasAnyUsersSnap.empty;
+  // Initial owner account is created with relaxed rules; next self-registrations are strict.
   const role: UserRole = isBootstrapRegistration ? "admin" : resolveRole(requestedRole, isAdmin);
   const uid = db.collection("users").doc().id;
   const email = syntheticEmailForUid(uid);
@@ -211,13 +228,13 @@ export const registerByFullName = onCall({ region: "us-central1" }, async (reque
   try {
     await admin.auth().createUser({
       uid,
-      displayName: fullName.trim()
+      displayName: displayFullName
     });
     await admin.auth().setCustomUserClaims(uid, { role });
     await usersRef.set({
       uid,
       email,
-      fullName: fullName.trim(),
+      fullName: displayFullName,
       fullNameNormalized: norm,
       passwordHash,
       role,
