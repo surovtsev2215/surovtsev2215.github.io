@@ -3,6 +3,7 @@ import { Navigate, Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
+import { PasswordInput } from "../components/ui/password-input";
 import { Label } from "../components/ui/label";
 
 export function RegisterPage() {
@@ -66,9 +67,8 @@ export function RegisterPage() {
         </div>
         <div className="space-y-1">
           <Label htmlFor="register-password">Пароль</Label>
-          <Input
+          <PasswordInput
             id="register-password"
-            type="password"
             autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -80,9 +80,8 @@ export function RegisterPage() {
         </div>
         <div className="space-y-1">
           <Label htmlFor="register-confirm-password">Подтверждение пароля</Label>
-          <Input
+          <PasswordInput
             id="register-confirm-password"
-            type="password"
             autoComplete="new-password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
@@ -90,6 +89,7 @@ export function RegisterPage() {
             aria-describedby={error ? "register-error" : undefined}
             required
           />
+          <p className="text-xs text-slate-500 theme-dark:text-slate-400">Минимальная длина пароля: 6 символов.</p>
         </div>
         {error && (
           <p

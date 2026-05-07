@@ -95,6 +95,15 @@ function pipeTotal(p: PipeDraft): number {
   return Number((p.jointsCount * p.pipeLength).toFixed(2));
 }
 
+function scrollToFirstInvalidField() {
+  const invalid = document.querySelector<HTMLElement>(
+    "input.border-amber-300, select.border-amber-300, textarea.border-amber-300"
+  );
+  if (!invalid) return;
+  invalid.scrollIntoView({ behavior: "smooth", block: "center" });
+  requestAnimationFrame(() => invalid.focus());
+}
+
 function StepSection({
   icon,
   title,
@@ -319,6 +328,7 @@ export function FormPage() {
       validExtraEquipment.length === 0
     ) {
       toast.error("Заполните любой блок: день зачета, фольма-ткань, трубопроводы или оборудование");
+      scrollToFirstInvalidField();
       return;
     }
     setSubmitting(true);
@@ -495,6 +505,20 @@ export function FormPage() {
     hasValidPipelinePipes ||
     hasValidEquipment ||
     hasValidExtraEquipment;
+  const checklist = [
+    { label: "Дата выбрана", done: !!date },
+    { label: "Блок работ выбран", done: !!fullName.trim() },
+    {
+      label: "Есть данные по смене",
+      done: shiftValue > 0 || shiftPhotos.length > 0 || !!isolatorWorkDescription.trim()
+    },
+    {
+      label: "Есть заполненные карточки",
+      done: hasValidShiftPipes || hasValidPipelinePipes || hasValidEquipment || hasValidExtraEquipment
+    }
+  ];
+  const doneCount = checklist.filter((item) => item.done).length;
+  const progressPercent = Math.round((doneCount / checklist.length) * 100);
 
   return (
     <div className="page-stack pb-2">
@@ -513,6 +537,38 @@ export function FormPage() {
       <Card className="border-slate-300/90 bg-slate-100/85 theme-dark:border-slate-700/90 theme-dark:bg-slate-900/80">
         <CardContent className="p-3 text-xs font-medium text-slate-700 theme-dark:text-slate-200">
           ФИО: {profile?.fullName?.trim() || "не указано"}
+        </CardContent>
+      </Card>
+
+      <Card className="border-slate-300/90 bg-white/90 theme-dark:border-slate-700/90 theme-dark:bg-slate-900/80">
+        <CardContent className="space-y-2 p-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-semibold text-slate-800 theme-dark:text-slate-100">Прогресс заполнения</p>
+            <span className="text-xs font-semibold text-slate-600 theme-dark:text-slate-300">{progressPercent}%</span>
+          </div>
+          <div className="h-2 rounded-full bg-slate-200 theme-dark:bg-slate-700">
+            <div
+              className="h-2 rounded-full bg-primary transition-all"
+              style={{ width: `${progressPercent}%` }}
+              aria-hidden
+            />
+          </div>
+          <div className="grid gap-1 sm:grid-cols-2">
+            {checklist.map((item) => (
+              <div
+                key={item.label}
+                className={cn(
+                  "inline-flex items-center gap-1.5 text-xs",
+                  item.done
+                    ? "text-emerald-700 theme-dark:text-emerald-300"
+                    : "text-slate-500 theme-dark:text-slate-400"
+                )}
+              >
+                <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
+                <span>{item.label}</span>
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
 
@@ -1321,7 +1377,7 @@ export function FormPage() {
         </div>
       </StepSection>
 
-      <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
+      <div className="hidden flex-col-reverse gap-2 pt-1 sm:flex sm:flex-row sm:justify-end">
         <Button
           type="button"
           variant="accent"
@@ -1337,6 +1393,21 @@ export function FormPage() {
           Для отправки достаточно заполнить любой блок: день зачета, фольма-ткань, трубопроводы или оборудование.
         </p>
       )}
+      <div className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom)+0.5rem)] left-0 right-0 z-20 px-3 sm:hidden">
+        <div className="mx-auto max-w-6xl">
+          <div className="glass rounded-xl border p-2 shadow-card">
+            <Button
+              type="button"
+              variant="accent"
+              className="w-full shadow-sm"
+              disabled={submitting || !canSubmit}
+              onClick={() => void submit()}
+            >
+              {submitting ? "Сохранение..." : "Отправить отчёт"}
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

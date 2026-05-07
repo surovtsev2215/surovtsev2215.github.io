@@ -126,8 +126,34 @@ export function AppLayout() {
     <div className="min-h-screen pb-[calc(4.75rem+env(safe-area-inset-bottom))] md:pb-0">
       <header className="glass sticky top-0 z-20 border-b">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 py-2.5 sm:px-4 sm:py-3">
-          <div className="truncate text-sm font-semibold text-primary theme-dark:text-accent sm:text-base">
-            ПТО · Изоляция
+          <div className="min-w-0">
+            <div className="truncate text-sm font-semibold text-primary theme-dark:text-accent sm:text-base">
+              ПТО · Изоляция
+            </div>
+            <div className="mt-0.5 flex items-center gap-1.5 sm:hidden">
+              <span
+                className={cn(
+                  "inline-flex rounded-full border px-2 py-0.5 text-[10px]",
+                  role === "admin"
+                    ? "border-amber-200 bg-amber-50 text-amber-700 theme-dark:border-amber-700 theme-dark:bg-amber-900/40 theme-dark:text-amber-300"
+                    : role === "director"
+                      ? "border-violet-200 bg-violet-50 text-violet-700 theme-dark:border-violet-700 theme-dark:bg-violet-900/40 theme-dark:text-violet-300"
+                      : "border-sky-200 bg-sky-50 text-sky-700 theme-dark:border-sky-700 theme-dark:bg-sky-900/40 theme-dark:text-sky-300"
+                )}
+              >
+                {role === "admin" ? "Админ" : role === "director" ? "Директор" : "Изолировщик"}
+              </span>
+              <span
+                className={cn(
+                  "inline-flex rounded-full border px-2 py-0.5 text-[10px]",
+                  online
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-700 theme-dark:border-emerald-800 theme-dark:bg-emerald-950/40 theme-dark:text-emerald-300"
+                    : "border-amber-200 bg-amber-50 text-amber-700 theme-dark:border-amber-900 theme-dark:bg-amber-950/30 theme-dark:text-amber-300"
+                )}
+              >
+                {online ? "Онлайн" : "Офлайн"}
+              </span>
+            </div>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-3">
             <Button type="button" variant="secondary" size="sm" onClick={toggleTheme}>
