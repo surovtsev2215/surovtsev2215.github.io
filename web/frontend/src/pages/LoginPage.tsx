@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { isFirebaseConfigured } from "../lib/firebase";
 import { Button } from "../components/ui/button";
@@ -9,6 +9,7 @@ import { Label } from "../components/ui/label";
 
 export function LoginPage() {
   const { user, profile, role, login } = useAuth();
+  const navigate = useNavigate();
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -82,11 +83,11 @@ export function LoginPage() {
         <Button type="submit" className="w-full" disabled={loading}>
           {loading ? "Вход..." : "Войти"}
         </Button>
-        <p className="text-center text-sm text-slate-600 theme-dark:text-slate-300">
-          Нет аккаунта?{" "}
-          <Link className="text-primary underline-offset-2 hover:underline" to="/register">
-            Зарегистрироваться
-          </Link>
+        <Button type="button" variant="secondary" className="w-full" onClick={() => navigate("/register")}>
+          Зарегистрироваться
+        </Button>
+        <p className="text-center text-xs text-slate-500 theme-dark:text-slate-400">
+          Нет аккаунта? Откройте регистрацию и создайте пользователя.
         </p>
         {!isFirebaseConfigured && (
           <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 theme-dark:border-slate-700 theme-dark:bg-slate-800/90 theme-dark:text-slate-300">
