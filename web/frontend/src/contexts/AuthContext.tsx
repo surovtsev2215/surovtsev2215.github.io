@@ -19,6 +19,7 @@ interface AuthContextValue {
   role: UserRole | null;
   loading: boolean;
   login: (fullName: string, password: string) => Promise<void>;
+  register: (fullName: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -27,6 +28,10 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 const loginByFullNameFn = httpsCallable<{ fullName: string; password: string }, { token: string }>(
   functions,
   "loginByFullName"
+);
+const registerByFullNameFn = httpsCallable<{ fullName: string; password: string }, { token: string }>(
+  functions,
+  "registerByFullName"
 );
 
 function userMessageFromLoginError(error: unknown): string {
@@ -38,6 +43,17 @@ function userMessageFromLoginError(error: unknown): string {
   if (code.includes("deadline-exceeded")) return "Превышено время ожидания входа. Попробуйте снова.";
   if (error instanceof Error && error.message) return error.message;
   return "Не удалось выполнить вход.";
+}
+
+function userMessageFromRegisterError(error: unknown): string {
+  const code = typeof error === "object" && error && "code" in error ? String(error.code) : "";
+  if (code.includes("already-exists")) return "Пользователь с таким ФИО уже существует.";
+  if (code.includes("invalid-argument")) return "Проверьте ФИО и пароль (минимум 6 символов).";
+  if (code.includes("resource-exhausted")) return "Слишком много попыток регистрации. Повторите позже.";
+  if (code.includes("unavailable")) return "Сервис регистрации временно недоступен. Проверьте интернет.";
+  if (code.includes("deadline-exceeded")) return "Превышено время ожидания регистрации. Попробуйте снова.";
+  if (error instanceof Error && error.message) return error.message;
+  return "Не удалось зарегистрироваться.";
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -162,6 +178,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await signInWithCustomToken(auth, data.token);
         } catch (error) {
           throw new Error(userMessageFromLoginError(error));
+        }
+      },
+      register: async (fullName, password) => {
+        if (!isFirebaseConfigured) {
+          throw new Error("Регистрация недоступна в demo-режиме. Создайте пользователя в панели администратора.");
+        }
+        try {
+          const { data } = await registerByFullNameFn({ fullName: fullName.trim(), password });
+          if (!data?.token) throw new Error("Сервер не вернул токен регистрации.");
+          await signInWithCustomToken(auth, data.token);
+        } catch (error) {
+          throw new Error(userMessageFromRegisterError(error));
         }
       },
       logout: async () => {

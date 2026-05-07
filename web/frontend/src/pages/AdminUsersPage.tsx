@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { httpsCallable } from "firebase/functions";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -12,6 +13,7 @@ import {
   updateDemoUser
 } from "../lib/demoUsers";
 import { isFirebaseConfigured } from "../lib/firebase";
+import { functions } from "../lib/firebase";
 import type { UserRole } from "../types";
 
 export function AdminUsersPage() {
@@ -23,9 +25,17 @@ export function AdminUsersPage() {
   const [editPassword, setEditPassword] = useState("");
   const [editRole, setEditRole] = useState<"isolator" | "director">("isolator");
   const [version, setVersion] = useState(0);
+  const [remoteFullName, setRemoteFullName] = useState("");
+  const [remotePassword, setRemotePassword] = useState("");
+  const [remoteRole, setRemoteRole] = useState<"isolator" | "director">("isolator");
+  const [remoteLoading, setRemoteLoading] = useState(false);
 
   const users = useMemo(() => getDemoUsers(), [version]);
   const audit = useMemo(() => getDemoAuditEvents(), [version]);
+  const registerByFullNameFn = httpsCallable<
+    { fullName: string; password: string; requestedRole?: "isolator" | "director" },
+    { uid: string; role: string }
+  >(functions, "registerByFullName");
 
   function addDemoUser() {
     if (!fullName.trim() || password.length < 6) {
@@ -86,6 +96,30 @@ export function AdminUsersPage() {
       toast.success("Пользователь обновлён");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Не удалось обновить пользователя");
+    }
+  }
+
+  async function addFirebaseUser() {
+    if (!remoteFullName.trim() || remotePassword.length < 6) {
+      toast.error("Заполните ФИО и пароль (минимум 6 символов).");
+      return;
+    }
+    setRemoteLoading(true);
+    try {
+      await registerByFullNameFn({
+        fullName: remoteFullName.trim(),
+        password: remotePassword,
+        requestedRole: remoteRole
+      });
+      setRemoteFullName("");
+      setRemotePassword("");
+      setRemoteRole("isolator");
+      toast.success("Пользователь создан.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Не удалось создать пользователя";
+      toast.error(message);
+    } finally {
+      setRemoteLoading(false);
     }
   }
 
@@ -278,19 +312,49 @@ export function AdminUsersPage() {
           </Card>
         </>
       ) : (
-        <div className="rounded-xl border border-slate-200 bg-white p-4 theme-dark:border-slate-700 theme-dark:bg-slate-900">
-          <p className="text-slate-600 theme-dark:text-slate-300">
-            Вход по ФИО и паролю: вызывается Cloud Function <code className="text-xs">loginByFullName</code> (custom
-            token). В Firestore в коллекции <code className="text-xs">users</code> нужны поля:{" "}
-            <code className="text-xs">fullName</code>, <code className="text-xs">fullNameNormalized</code> (как на
-            клиенте в <code className="text-xs">normalizeFullName</code>), <code className="text-xs">passwordHash</code>{" "}
-            (bcrypt), <code className="text-xs">role</code>. Документ с id = Firebase Auth <code className="text-xs">uid</code>.
-          </p>
-          <p className="mt-2 text-xs text-slate-500 theme-dark:text-slate-400">
-            Создание пользователей с хэшем пароля — отдельной admin-функцией или скриптом; см.{" "}
-            <code className="text-xs">web/firebase/functions</code>.
-          </p>
-        </div>
+        <Card>
+          <CardContent className="space-y-3 p-4">
+            <p className="text-sm text-slate-600 theme-dark:text-slate-300">
+              Создание пользователей в Firebase. По умолчанию роль - изолировщик.
+            </p>
+            <div className="grid gap-2 md:grid-cols-3">
+              <div>
+                <Label htmlFor="firebase-fullname">ФИО</Label>
+                <Input
+                  id="firebase-fullname"
+                  value={remoteFullName}
+                  onChange={(e) => setRemoteFullName(e.target.value)}
+                  placeholder="Иванов Иван Иванович"
+                />
+              </div>
+              <div>
+                <Label htmlFor="firebase-password">Пароль</Label>
+                <Input
+                  id="firebase-password"
+                  type="password"
+                  value={remotePassword}
+                  onChange={(e) => setRemotePassword(e.target.value)}
+                  placeholder="Минимум 6 символов"
+                />
+              </div>
+              <div>
+                <Label htmlFor="firebase-role">Роль</Label>
+                <select
+                  id="firebase-role"
+                  className="h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm theme-dark:border-slate-700 theme-dark:bg-slate-900"
+                  value={remoteRole}
+                  onChange={(e) => setRemoteRole(e.target.value === "director" ? "director" : "isolator")}
+                >
+                  <option value="isolator">Сотрудник (изолировщик)</option>
+                  <option value="director">Директор</option>
+                </select>
+              </div>
+            </div>
+            <Button type="button" disabled={remoteLoading} onClick={addFirebaseUser}>
+              {remoteLoading ? "Создание..." : "Создать пользователя"}
+            </Button>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

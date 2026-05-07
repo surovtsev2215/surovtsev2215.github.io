@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { isFirebaseConfigured } from "../lib/firebase";
 import { Button } from "../components/ui/button";
@@ -81,6 +81,14 @@ export function LoginPage() {
         <Button type="submit" className="w-full" disabled={loading}>
           {loading ? "Вход..." : "Войти"}
         </Button>
+        {isFirebaseConfigured && (
+          <p className="text-center text-sm text-slate-600 theme-dark:text-slate-300">
+            Нет аккаунта?{" "}
+            <Link className="text-primary underline-offset-2 hover:underline" to="/register">
+              Зарегистрироваться
+            </Link>
+          </p>
+        )}
         {!isFirebaseConfigured && (
           <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 theme-dark:border-slate-700 theme-dark:bg-slate-800/90 theme-dark:text-slate-300">
             Demo: ФИО и пароль из раздела «Пользователи» у админа.
