@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#1e3a5f" />
+    <title>ПТО Изоляция</title>
+    <script>
+      // SPA-fallback для GitHub Pages.
+      // Кодирует исходный путь и query в querystring индексной страницы и редиректит туда.
+      // index.html содержит парный скрипт, который восстанавливает путь через history.replaceState.
+      // Для user-pages (https://<username>.github.io/) pathSegmentsToKeep = 0.
+      // Для project-pages (https://<username>.github.io/<repo>/) поставить = 1.
+      (function () {
+        var pathSegmentsToKeep = 0;
+        var l = window.location;
+        l.replace(
+          l.protocol + "//" + l.hostname + (l.port ? ":" + l.port : "") +
+          l.pathname.split("/").slice(0, 1 + pathSegmentsToKeep).join("/") +
+          "/?/" +
+          l.pathname.slice(1).split("/").slice(pathSegmentsToKeep).join("/").replace(/&/g, "~and~") +
+          (l.search ? "&" + l.search.slice(1).replace(/&/g, "~and~") : "") +
+          l.hash
+        );
+      })();
+    </script>
+  </head>
+  <body></body>
+</html>

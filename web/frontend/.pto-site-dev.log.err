@@ -1,0 +1,67 @@
+13:23:42 [vite] Internal server error: C:\Users\Surovcev\PTO_Project\web\frontend\src\pages\FormPage.tsx: Identifier 'updateShiftPipe' has already been declared. (345:11)
+
+  343 |   }, [shiftPhotos, shiftPipes, pipelinePipes, equipmentPipes, extraEquipmentPipes]);
+  344 |
+> 345 |   function updateShiftPipe(localId: string, patch: Partial<PipeDraft>) {
+      |            ^
+  346 |     setShiftPipes((prev) => prev.map((p) => (p.localId === localId ? { ...p, ...patch } : p)));
+  347 |   }
+  348 |
+  Plugin: vite:react-babel
+  File: C:/Users/Surovcev/PTO_Project/web/frontend/src/pages/FormPage.tsx:345:11
+  353|    function removeShiftPipe(localId: string) {
+  354|      setShiftPipes((prev) => {
+  355|        const removed = prev.find((p) => p.localId === localId);
+     |                 ^
+  356|        if (removed) removed.photos.forEach((ph) => URL.revokeObjectURL(ph.preview));
+  357|        return prev.filter((p) => p.localId !== localId);
+      at constructor (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:365:19)
+      at TypeScriptParserMixin.raise (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:6616:19)
+      at TypeScriptScopeHandler.checkRedeclarationInScope (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:1619:19)
+      at TypeScriptScopeHandler.declareName (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:1602:14)
+      at TypeScriptScopeHandler.declareName (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:4892:11)
+      at TypeScriptParserMixin.registerFunctionStatementId (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:13483:16)
+      at TypeScriptParserMixin.registerFunctionStatementId (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:9195:13)
+      at TypeScriptParserMixin.parseFunction (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:13467:12)
+      at TypeScriptParserMixin.parseFunctionStatement (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:13142:17)
+      at TypeScriptParserMixin.parseStatementContent (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:12808:21)
+      at TypeScriptParserMixin.parseStatementContent (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:9525:18)
+      at TypeScriptParserMixin.parseStatementLike (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:12784:17)
+      at TypeScriptParserMixin.parseStatementListItem (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:12764:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:13333:61)
+      at TypeScriptParserMixin.parseBlockBody (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:13326:10)
+      at TypeScriptParserMixin.parseBlock (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:13314:10)
+      at TypeScriptParserMixin.parseFunctionBody (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:12117:24)
+      at TypeScriptParserMixin.parseFunctionBodyAndFinish (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:12103:10)
+      at TypeScriptParserMixin.parseFunctionBodyAndFinish (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:9189:18)
+      at C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:13462:12
+      at TypeScriptParserMixin.withSmartMixTopicForbiddingContext (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:12420:14)
+      at TypeScriptParserMixin.parseFunction (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:13461:10)
+      at TypeScriptParserMixin.parseFunctionStatement (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:13142:17)
+      at TypeScriptParserMixin.parseStatementContent (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:12808:21)
+      at TypeScriptParserMixin.parseStatementContent (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:9525:18)
+      at TypeScriptParserMixin.parseStatementLike (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:12784:17)
+      at TypeScriptParserMixin.parseStatementListItem (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:12764:17)
+      at TypeScriptParserMixin.parseExportDeclaration (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:13951:17)
+      at TypeScriptParserMixin.parseExportDeclaration (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:9646:85)
+      at TypeScriptParserMixin.maybeParseExportDeclaration (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:13910:31)
+      at TypeScriptParserMixin.parseExport (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:13829:29)
+      at TypeScriptParserMixin.parseExport (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:9402:20)
+      at TypeScriptParserMixin.parseStatementContent (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:12895:27)
+      at TypeScriptParserMixin.parseStatementContent (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:9525:18)
+      at TypeScriptParserMixin.parseStatementLike (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:12784:17)
+      at TypeScriptParserMixin.parseModuleItem (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:12761:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:13333:36)
+      at TypeScriptParserMixin.parseBlockBody (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:13326:10)
+      at TypeScriptParserMixin.parseProgram (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:12639:10)
+      at TypeScriptParserMixin.parseTopLevel (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:12629:25)
+      at TypeScriptParserMixin.parse (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:14505:25)
+      at TypeScriptParserMixin.parse (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:10143:18)
+      at parse (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\parser\lib\index.js:14539:38)
+      at parser (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\core\lib\parser\index.js:41:34)
+      at parser.next (<anonymous>)
+      at normalizeFile (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\core\lib\transformation\normalize-file.js:64:37)
+      at normalizeFile.next (<anonymous>)
+      at run (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\core\lib\transformation\index.js:22:50)
+      at run.next (<anonymous>)
+      at transform (C:\Users\Surovcev\PTO_Project\web\frontend\node_modules\@babel\core\lib\transform.js:22:33)

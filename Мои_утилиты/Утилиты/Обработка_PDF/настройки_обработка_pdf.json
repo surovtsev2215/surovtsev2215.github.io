@@ -1,0 +1,19 @@
+{
+  "last_dir": "C:\\Users\\Surovcev\\Desktop",
+  "preset": "auto",
+  "min_chars": "40",
+  "dpi": "200",
+  "lang": "rus+eng",
+  "password": "",
+  "advanced": false,
+  "extract_tables": false,
+  "parallel": true,
+  "stop_on_error": false,
+  "psm": "3",
+  "oem": "3",
+  "workers": "4",
+  "max_pages": "",
+  "pre_gray": false,
+  "pre_bin": false,
+  "last_export_dir": "C:/Users/Surovcev/Desktop"
+}

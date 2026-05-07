@@ -1,0 +1,332 @@
+﻿@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-slate-100 text-slate-900;
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(30, 58, 95, 0.12), transparent 40%),
+    radial-gradient(circle at 80% 0%, rgba(245, 158, 11, 0.08), transparent 35%);
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: -20vmax;
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0.4;
+  background:
+    radial-gradient(circle at 15% 30%, rgba(14, 165, 233, 0.18), transparent 30%),
+    radial-gradient(circle at 85% 20%, rgba(99, 102, 241, 0.16), transparent 28%),
+    radial-gradient(circle at 50% 85%, rgba(245, 158, 11, 0.12), transparent 30%);
+}
+
+input,
+textarea,
+select,
+button {
+  font: inherit;
+}
+
+/* Мобильная читабельность/тач: предотвращает zoom и улучшает точность нажатий */
+@media (max-width: 767px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+
+  button {
+    min-height: 44px;
+  }
+
+  .surface-card {
+    border-radius: 0.875rem;
+  }
+
+  .section-title {
+    font-size: 1rem;
+    line-height: 1.35rem;
+  }
+
+  .section-subtitle {
+    font-size: 0.8125rem;
+    line-height: 1.2rem;
+  }
+}
+
+.glass {
+  @apply border border-slate-200/70 bg-white/85 backdrop-blur;
+  box-shadow:
+    0 8px 30px rgba(15, 23, 42, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.theme-dark body {
+  @apply bg-slate-950 text-slate-100;
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(59, 130, 246, 0.25), transparent 45%),
+    radial-gradient(circle at 80% 0%, rgba(245, 158, 11, 0.15), transparent 35%);
+}
+
+.theme-dark .glass {
+  @apply border-slate-700/70 bg-slate-900/70;
+  box-shadow:
+    0 10px 36px rgba(2, 6, 23, 0.55),
+    inset 0 1px 0 rgba(148, 163, 184, 0.12);
+}
+
+.theme-dark input,
+.theme-dark textarea,
+.theme-dark select {
+  @apply border-slate-700 bg-slate-900 text-slate-100;
+}
+
+.theme-dark button {
+  @apply border-slate-700;
+}
+
+/* Поверхности для карточек, KPI, таблиц (согласовано с тёмной темой) */
+.surface-card {
+  @apply rounded-xl border border-slate-200 bg-white shadow-sm transition-all duration-200;
+  box-shadow:
+    0 6px 16px rgba(15, 23, 42, 0.06),
+    0 1px 0 rgba(255, 255, 255, 0.7) inset;
+}
+
+.theme-dark .surface-card {
+  @apply border-slate-700 bg-slate-900/85 text-slate-100;
+  box-shadow:
+    0 10px 28px rgba(2, 6, 23, 0.45),
+    0 1px 0 rgba(148, 163, 184, 0.12) inset;
+}
+
+.surface-muted {
+  @apply rounded-xl border border-slate-200 bg-slate-50;
+}
+
+.theme-dark .surface-muted {
+  @apply border-slate-700 bg-slate-800/70 text-slate-100;
+}
+
+.surface-table-header {
+  @apply border-b border-slate-200 bg-slate-50;
+}
+
+.theme-dark .surface-table-header {
+  @apply border-slate-700 bg-slate-800/80 text-slate-200;
+}
+
+.surface-table-row {
+  @apply border-b border-slate-200 bg-white;
+}
+
+.theme-dark .surface-table-row {
+  @apply border-slate-700 bg-slate-900/40;
+}
+
+.surface-table-row-interactive {
+  @apply relative cursor-pointer transition hover:bg-slate-50;
+}
+
+.theme-dark .surface-table-row-interactive:hover {
+  @apply bg-slate-800/80;
+}
+
+.surface-table-row-interactive::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 15%;
+  bottom: 15%;
+  width: 2px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(30, 58, 95, 0), rgba(30, 58, 95, 0.55), rgba(30, 58, 95, 0));
+  opacity: 0;
+  transform: translateX(-2px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.theme-dark .surface-table-row-interactive::before {
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0), rgba(245, 158, 11, 0.7), rgba(245, 158, 11, 0));
+}
+
+.surface-table-row-interactive:hover::before {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.surface-highlight {
+  background:
+    linear-gradient(140deg, rgba(30, 58, 95, 0.95), rgba(51, 65, 85, 0.95)),
+    radial-gradient(circle at 0% 0%, rgba(245, 158, 11, 0.35), transparent 45%);
+  @apply rounded-xl border border-slate-700 text-white shadow-card;
+}
+
+.theme-dark .surface-highlight {
+  background:
+    linear-gradient(140deg, rgba(30, 41, 59, 0.95), rgba(2, 6, 23, 0.95)),
+    radial-gradient(circle at 0% 0%, rgba(245, 158, 11, 0.25), transparent 45%);
+}
+
+.soft-ring {
+  box-shadow:
+    0 0 0 1px rgba(148, 163, 184, 0.25),
+    0 12px 24px rgba(15, 23, 42, 0.08);
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-in-up {
+  animation: fadeInUp 0.32s ease-out;
+}
+
+.lift-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.lift-card:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 0 0 1px rgba(148, 163, 184, 0.22),
+    0 16px 30px rgba(15, 23, 42, 0.13);
+}
+
+.kpi-glow {
+  position: relative;
+  overflow: hidden;
+}
+
+.kpi-glow::after {
+  content: "";
+  position: absolute;
+  inset: -30% -60%;
+  background: linear-gradient(120deg, transparent 30%, rgba(245, 158, 11, 0.14), transparent 70%);
+  transform: translateX(-120%);
+  transition: transform 0.5s ease;
+  pointer-events: none;
+}
+
+.kpi-glow:hover::after {
+  transform: translateX(120%);
+}
+
+@keyframes routeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.995);
+    filter: blur(1px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+.route-transition {
+  animation: routeIn 0.28s ease-out;
+  will-change: transform, opacity, filter;
+}
+
+.badge-live {
+  position: relative;
+  overflow: hidden;
+}
+
+.badge-live::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.4) 50%, transparent 65%);
+  transform: translateX(-120%);
+  animation: shimmer 3.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.divider-fade {
+  height: 1px;
+  width: 100%;
+  background: linear-gradient(90deg, transparent, rgba(148, 163, 184, 0.55), transparent);
+}
+
+.page-stack {
+  @apply space-y-4 sm:space-y-5;
+}
+
+.section-title {
+  @apply text-lg font-semibold tracking-tight text-slate-800;
+}
+
+.theme-dark .section-title {
+  @apply text-slate-100;
+}
+
+.section-subtitle {
+  @apply text-sm text-slate-500;
+}
+
+.theme-dark .section-subtitle {
+  @apply text-slate-400;
+}
+
+.content-section {
+  @apply rounded-xl;
+}
+
+.glass-toolbar {
+  @apply sticky top-[64px] z-10 rounded-xl border border-slate-200/70 bg-white/80 p-3 backdrop-blur-md sm:top-[76px];
+  box-shadow:
+    0 8px 24px rgba(15, 23, 42, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+.theme-dark .glass-toolbar {
+  @apply border-slate-700/70 bg-slate-900/70;
+  box-shadow:
+    0 10px 28px rgba(2, 6, 23, 0.5),
+    inset 0 1px 0 rgba(148, 163, 184, 0.12);
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .lift-card:hover {
+    transform: none;
+    box-shadow:
+      0 6px 16px rgba(15, 23, 42, 0.06),
+      0 1px 0 rgba(255, 255, 255, 0.7) inset;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-in-up,
+  .route-transition {
+    animation: none !important;
+  }
+
+  .lift-card,
+  .kpi-glow::after,
+  .badge-live::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}

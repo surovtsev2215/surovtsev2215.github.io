@@ -1,2 +1,41 @@
-.aider*
-.env
+﻿
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+*.pyo
+.Python
+
+# Отладка / логи в корне репозитория
+debug-*.log
+debug-pto*.jsonl
+
+# Состояние хаба и журнал на машине пользователя
+Мои_утилиты/Журнал.txt
+Мои_утилиты/Настройки.json
+
+# Базы и экспорт утилит (локальные данные)
+**/Утилиты/**/*.sqlite*
+**/Утилиты/**/*.xlsx
+Мои_утилиты/Утилиты/**/недавние_проекты.json
+
+# Локальные бэкапы хаба (данные, не исходники)
+Мои_утилиты/Бэкапы/
+
+# Ключи LLM / локальная конфигурация ассистента АКЗ (не коммитить)
+Мои_утилиты/Утилиты/Окраска_по_PDF/assistant_config.json
+
+# Web-локальные артефакты
+web/start_web_local.log
+web/backend/data/*.sqlite3
+web/frontend/dist/
+
+# Firebase
+.firebase/
+firebase/functions/lib/
+firebase/functions/node_modules/
+.firebaserc
+
+# Кэш парсинга КС-2 (генерируется локально)
+Мои_утилиты/Утилиты/Выполнение/Данные/cache_ks2/*.pkl
