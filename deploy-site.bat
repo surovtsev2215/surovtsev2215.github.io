@@ -30,14 +30,18 @@ if not "%CHANGES_COUNT%"=="0" set "HAS_CHANGES=1"
 echo Changes count: %CHANGES_COUNT% >> "%LOG_FILE%"
 
 if "%HAS_CHANGES%"=="1" (
-  call :step "[4/8] Stage and commit changes"
-  git add . >> "%LOG_FILE%" 2>&1
-  if errorlevel 1 call :fail "git add failed"
+  if "%DRY_RUN%"=="1" (
+    call :step "[4/8] Dry run mode: commit skipped"
+  ) else (
+    call :step "[4/8] Stage and commit changes"
+    git add . >> "%LOG_FILE%" 2>&1
+    if errorlevel 1 call :fail "git add failed"
 
-  set "STAMP=%date% %time%"
-  git commit -m "auto: site update %STAMP%" >> "%LOG_FILE%" 2>&1
-  if errorlevel 1 (
-    call :step "Commit skipped (nothing to commit or hook rejected)."
+    set "STAMP=%date% %time%"
+    git commit -m "auto: site update %STAMP%" >> "%LOG_FILE%" 2>&1
+    if errorlevel 1 (
+      call :step "Commit skipped (nothing to commit or hook rejected)."
+    )
   )
 ) else (
   call :step "[4/8] No changes detected, commit skipped"

@@ -1,11 +1,11 @@
 ================================================== 
-Deploy started: 07.05.2026 16:13:16,11 
+Deploy started: 07.05.2026 16:16:14,16 
 Root: C:\Users\Surovcev\PTO_Project 
-Dry run: 1 
+Dry run: 0 
 ================================================== 
 [1/8] Open project root 
 [2/8] Verify git repository 
 true
 [3/8] Check pending changes 
-Changes count: 3 
+Changes count: 2 
 [4/8] Stage and commit changes 
