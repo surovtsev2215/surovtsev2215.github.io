@@ -4,6 +4,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { isFirebaseConfigured } from "../lib/firebase";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
+import { PasswordInput } from "../components/ui/password-input";
 import { Label } from "../components/ui/label";
 
 export function LoginPage() {
@@ -58,9 +59,8 @@ export function LoginPage() {
         </div>
         <div className="space-y-1">
           <Label htmlFor="login-password">Пароль</Label>
-          <Input
+          <PasswordInput
             id="login-password"
-            type="password"
             autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -68,6 +68,7 @@ export function LoginPage() {
             aria-describedby={error ? "login-error" : undefined}
             required
           />
+          <p className="text-xs text-slate-500 theme-dark:text-slate-400">Можно проверить ввод через иконку глаза.</p>
         </div>
         {error && (
           <p
@@ -91,9 +92,9 @@ export function LoginPage() {
         )}
         {!isFirebaseConfigured && (
           <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 theme-dark:border-slate-700 theme-dark:bg-slate-800/90 theme-dark:text-slate-300">
-            Demo: ФИО и пароль из раздела «Пользователи» у админа.
+            Demo: временно доступен только один аккаунт администратора.
             <br />
-            По умолчанию: «Начальник ПТО (Demo)» / admin123 · «Изолировщик (Demo)» / 123456 · «Директор (Demo)» / director123
+            Логин: <strong>admin</strong> · Пароль: <strong>3001</strong>
           </div>
         )}
       </form>

@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { httpsCallable } from "firebase/functions";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
+import { PasswordInput } from "../components/ui/password-input";
 import { Label } from "../components/ui/label";
 import { Card, CardContent } from "../components/ui/card";
 import {
@@ -137,9 +138,9 @@ export function AdminUsersPage() {
           <Card>
             <CardContent className="space-y-3 p-4">
               <p className="text-sm text-slate-600 theme-dark:text-slate-300">
-                Вход в demo только по <strong>ФИО + пароль</strong>. Созданные сотрудники и директора могут входить сразу.
+                Demo-режим ограничен: оставлен только один профиль администратора.
               </p>
-              <div className="grid gap-2 md:grid-cols-3">
+              <div className="grid gap-2 md:grid-cols-3 opacity-60">
                 <div>
                   <Label htmlFor="demo-fullname">ФИО</Label>
                   <Input
@@ -147,16 +148,17 @@ export function AdminUsersPage() {
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="Иванов Иван или Иванов И.И."
+                    disabled
                   />
                 </div>
                 <div>
                   <Label htmlFor="demo-password">Пароль</Label>
-                  <Input
+                  <PasswordInput
                     id="demo-password"
-                    type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Минимум 6 символов"
+                    disabled
                   />
                 </div>
                 <div>
@@ -166,14 +168,15 @@ export function AdminUsersPage() {
                     className="h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm theme-dark:border-slate-700 theme-dark:bg-slate-900"
                     value={newRole}
                     onChange={(e) => setNewRole(e.target.value === "director" ? "director" : "isolator")}
+                    disabled
                   >
                     <option value="isolator">Сотрудник (изолировщик)</option>
                     <option value="director">Директор</option>
                   </select>
                 </div>
               </div>
-              <Button type="button" onClick={addDemoUser}>
-                Добавить demo-пользователя
+              <Button type="button" disabled>
+                Создание demo-пользователей отключено
               </Button>
             </CardContent>
           </Card>
@@ -261,9 +264,9 @@ export function AdminUsersPage() {
                             variant="outline"
                             size="sm"
                             className="w-full sm:w-auto"
-                            onClick={() => beginEdit(user.uid, user.fullName, user.password, user.role)}
+                            disabled
                           >
-                            Редактировать
+                            Редактирование отключено
                           </Button>
                           {user.role !== "admin" && (
                             <Button
@@ -329,9 +332,8 @@ export function AdminUsersPage() {
               </div>
               <div>
                 <Label htmlFor="firebase-password">Пароль</Label>
-                <Input
+                <PasswordInput
                   id="firebase-password"
-                  type="password"
                   value={remotePassword}
                   onChange={(e) => setRemotePassword(e.target.value)}
                   placeholder="Минимум 6 символов"
