@@ -25,15 +25,22 @@ export async function apiRequest<T>(pathname: string, init?: RequestInit): Promi
   if (response.status === 204) return undefined as T;
 
   let data: unknown = null;
+  let rawText = "";
   try {
     data = await response.json();
   } catch {
     data = null;
+    try {
+      rawText = await response.text();
+    } catch {
+      rawText = "";
+    }
   }
 
   if (!response.ok) {
-    const message =
-      typeof data === "object" && data && "error" in data ? String((data as { error: unknown }).error) : "Ошибка API.";
+    const jsonMessage = typeof data === "object" && data && "error" in data ? String((data as { error: unknown }).error) : "";
+    const plainMessage = rawText.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+    const message = jsonMessage || plainMessage || `Ошибка API (${response.status}).`;
     throw new Error(message);
   }
 

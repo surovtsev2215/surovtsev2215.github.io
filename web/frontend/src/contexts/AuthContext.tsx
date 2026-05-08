@@ -49,7 +49,7 @@ function userMessageFromLoginError(error: unknown): string {
 function userMessageFromRegisterError(error: unknown): string {
   const code = typeof error === "object" && error && "code" in error ? String(error.code) : "";
   if (code.includes("already-exists")) return "Пользователь с таким ФамилияИО уже существует.";
-  if (code.includes("invalid-argument")) return "Проверьте имя и пароль. Пароль должен быть минимум 4 символа.";
+  if (code.includes("invalid-argument")) return "Проверьте имя и пароль. Пароль должен быть минимум 2 символа.";
   if (code.includes("resource-exhausted")) return "Слишком много попыток регистрации. Повторите позже.";
   if (code.includes("unavailable")) return "Сервис регистрации временно недоступен. Проверьте интернет.";
   if (code.includes("deadline-exceeded")) return "Превышено время ожидания регистрации. Попробуйте снова.";
@@ -92,38 +92,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // #region agent log
-    fetch("http://127.0.0.1:7653/ingest/20d63d97-1111-4b46-9651-c2ddf66cae7c", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "cddc9f" },
-      body: JSON.stringify({
-        sessionId: "cddc9f",
-        runId: "pre-fix",
-        hypothesisId: "H3",
-        location: "src/contexts/AuthContext.tsx:useEffect",
-        message: "auth state subscription started",
-        data: {},
-        timestamp: Date.now()
-      })
-    }).catch(() => {});
-    // #endregion
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       try {
-        // #region agent log
-        fetch("http://127.0.0.1:7653/ingest/20d63d97-1111-4b46-9651-c2ddf66cae7c", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "cddc9f" },
-          body: JSON.stringify({
-            sessionId: "cddc9f",
-            runId: "pre-fix",
-            hypothesisId: "H3",
-            location: "src/contexts/AuthContext.tsx:onAuthStateChanged",
-            message: "auth callback fired",
-            data: { hasFirebaseUser: Boolean(firebaseUser), uid: firebaseUser?.uid ?? null },
-            timestamp: Date.now()
-          })
-        }).catch(() => {});
-        // #endregion
         setUser(firebaseUser);
         if (!firebaseUser) {
           setProfile(null);
@@ -137,27 +107,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const profileDoc = await getDoc(doc(db, "users", firebaseUser.uid));
         const profileData = profileDoc.exists() ? (profileDoc.data() as Profile) : null;
         const resolvedRole = claimRole ?? profileData?.role ?? null;
-
-        // #region agent log
-        fetch("http://127.0.0.1:7653/ingest/20d63d97-1111-4b46-9651-c2ddf66cae7c", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "cddc9f" },
-          body: JSON.stringify({
-            sessionId: "cddc9f",
-            runId: "pre-fix",
-            hypothesisId: "H4",
-            location: "src/contexts/AuthContext.tsx:roleResolution",
-            message: "resolved role from claims/profile",
-            data: {
-              claimRole: claimRole ?? null,
-              profileRole: profileData?.role ?? null,
-              resolvedRole: resolvedRole ?? null,
-              profileExists: profileDoc.exists()
-            },
-            timestamp: Date.now()
-          })
-        }).catch(() => {});
-        // #endregion
 
         // Fail closed: no role means no protected access until profile/claims are fixed.
         if (!resolvedRole) {
@@ -176,21 +125,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         );
       } catch (error) {
-        // #region agent log
-        fetch("http://127.0.0.1:7653/ingest/20d63d97-1111-4b46-9651-c2ddf66cae7c", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "cddc9f" },
-          body: JSON.stringify({
-            sessionId: "cddc9f",
-            runId: "pre-fix",
-            hypothesisId: "H5",
-            location: "src/contexts/AuthContext.tsx:onAuthStateChangedCatch",
-            message: "auth flow failed in callback",
-            data: { error: error instanceof Error ? error.message : "unknown" },
-            timestamp: Date.now()
-          })
-        }).catch(() => {});
-        // #endregion
         setProfile(null);
         setRole(null);
       } finally {

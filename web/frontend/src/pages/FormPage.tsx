@@ -7,7 +7,6 @@ import type { PipeEntry, Report, ShiftWorkType } from "../types";
 import { uploadReportPhotos } from "../lib/photoUpload";
 import { syntheticEmailForUid } from "../lib/syntheticUserEmail";
 import {
-  CheckCircle2,
   ClipboardList,
   Clock3,
   ImagePlus,
@@ -117,7 +116,7 @@ function StepSection({
   children: ReactNode;
 }) {
   return (
-    <Card className="animate-in-up overflow-hidden border border-slate-300/90 bg-slate-100/90 shadow-sm theme-dark:border-slate-700/90 theme-dark:bg-slate-900/80">
+    <Card className="surface-floating animate-in-up overflow-hidden border border-slate-300/90 bg-slate-100/90 shadow-sm theme-dark:border-slate-700/90 theme-dark:bg-slate-900/80">
       <CardContent className="space-y-3 p-3 sm:p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -506,21 +505,14 @@ export function FormPage() {
     hasValidPipelinePipes ||
     hasValidEquipment ||
     hasValidExtraEquipment;
-  const checklist = [
-    { label: "Дата выбрана", done: !!date },
-    { label: "Блок работ выбран", done: !!fullName.trim() },
-    {
-      label: "Есть данные по смене",
-      done: shiftValue > 0 || shiftPhotos.length > 0 || !!isolatorWorkDescription.trim()
-    },
-    {
-      label: "Есть заполненные карточки",
-      done: hasValidShiftPipes || hasValidPipelinePipes || hasValidEquipment || hasValidExtraEquipment
-    }
-  ];
-  const doneCount = checklist.filter((item) => item.done).length;
-  const progressPercent = Math.round((doneCount / checklist.length) * 100);
-
+  const filledSections = [
+    shiftValue > 0 || !!isolatorWorkDescription.trim() || shiftPhotos.length > 0 || hasValidShiftPipes,
+    hasValidPipelinePipes,
+    hasValidExtraEquipment,
+    hasValidEquipment
+  ].filter(Boolean).length;
+  const totalSections = 4;
+  const fillPercent = Math.round((filledSections / totalSections) * 100);
   return (
     <div className="page-stack pb-[calc(9rem+env(safe-area-inset-bottom))] sm:pb-3">
       <div className="surface-highlight animate-in-up p-4 sm:p-5">
@@ -535,43 +527,30 @@ export function FormPage() {
         </div>
       </div>
 
-      <Card className="border-slate-300/90 bg-slate-100/85 theme-dark:border-slate-700/90 theme-dark:bg-slate-900/80">
-        <CardContent className="p-3 text-xs font-medium text-slate-700 theme-dark:text-slate-200">
-          ФамилияИО: {profile?.fullName ? formatFullNameForDisplay(profile.fullName) : "не указано"}
+      <Card className="surface-floating border-slate-300/90 bg-slate-100/85 theme-dark:border-slate-700/90 theme-dark:bg-slate-900/80">
+        <CardContent className="space-y-1 p-3 text-sm font-semibold text-slate-800 theme-dark:text-slate-100 sm:text-base">
+          <div>ФИО: {profile?.fullName ? formatFullNameForDisplay(profile.fullName) : "не указано"}</div>
+          <div className="text-xs font-medium text-slate-600 theme-dark:text-slate-300 sm:text-sm">
+            Должность: {profile?.position?.trim() ? profile.position : "не указана"}
+          </div>
         </CardContent>
       </Card>
 
-      <Card className="border-slate-300/90 bg-white/90 theme-dark:border-slate-700/90 theme-dark:bg-slate-900/80">
-        <CardContent className="space-y-2 p-3">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-semibold text-slate-800 theme-dark:text-slate-100">Прогресс заполнения</p>
-            <span className="text-xs font-semibold text-slate-600 theme-dark:text-slate-300">{progressPercent}%</span>
-          </div>
-          <div className="h-2 rounded-full bg-slate-200 theme-dark:bg-slate-700">
-            <div
-              className="h-2 rounded-full bg-primary transition-all"
-              style={{ width: `${progressPercent}%` }}
-              aria-hidden
-            />
-          </div>
-          <div className="grid gap-1 sm:grid-cols-2">
-            {checklist.map((item) => (
-              <div
-                key={item.label}
-                className={cn(
-                  "inline-flex items-center gap-1.5 text-xs",
-                  item.done
-                    ? "text-emerald-700 theme-dark:text-emerald-300"
-                    : "text-slate-500 theme-dark:text-slate-400"
-                )}
-              >
-                <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
-                <span>{item.label}</span>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <div className="glass-toolbar surface-floating space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+          <span className="font-semibold text-slate-700 theme-dark:text-slate-100">Прогресс заполнения</span>
+          <span className="text-xs text-slate-600 theme-dark:text-slate-300">
+            {filledSections}/{totalSections} секций · {fillPercent}%
+          </span>
+        </div>
+        <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200 theme-dark:bg-slate-800">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-primary to-accent transition-all"
+            style={{ width: `${fillPercent}%` }}
+            aria-hidden
+          />
+        </div>
+      </div>
 
       <StepSection
         icon={<Clock3 className="h-4 w-4" />}
@@ -644,7 +623,7 @@ export function FormPage() {
               </div>
             )}
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white/70 p-3 theme-dark:border-slate-700 theme-dark:bg-slate-900/40">
+          <div className="surface-floating p-3">
             <div className="mb-2 text-sm font-semibold text-slate-700 theme-dark:text-slate-100">
               Трубы для фиксации смены (фольма-ткань)
             </div>
@@ -655,7 +634,7 @@ export function FormPage() {
                   return (
                     <div
                       key={p.localId}
-                      className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm theme-dark:border-slate-700 theme-dark:bg-slate-900/50"
+                      className="surface-floating rounded-2xl p-3"
                     >
                       <div className="mb-2 flex items-center justify-between gap-2">
                         <div className="text-sm font-semibold text-slate-700 theme-dark:text-slate-100">
@@ -833,7 +812,7 @@ export function FormPage() {
             return (
               <div
                 key={p.localId}
-                className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm theme-dark:border-slate-700 theme-dark:bg-slate-900/50"
+                className="surface-floating rounded-2xl p-3"
               >
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <div className="text-sm font-semibold text-slate-700 theme-dark:text-slate-100">
@@ -1033,7 +1012,7 @@ export function FormPage() {
             return (
               <div
                 key={p.localId}
-                className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm theme-dark:border-slate-700 theme-dark:bg-slate-900/50"
+                className="surface-floating rounded-2xl p-3"
               >
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <div className="text-sm font-semibold text-slate-700 theme-dark:text-slate-100">
@@ -1226,7 +1205,7 @@ export function FormPage() {
             return (
               <div
                 key={p.localId}
-                className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm theme-dark:border-slate-700 theme-dark:bg-slate-900/50"
+                className="surface-floating rounded-2xl p-3"
               >
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <div className="text-sm font-semibold text-slate-700 theme-dark:text-slate-100">

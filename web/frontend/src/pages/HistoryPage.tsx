@@ -64,6 +64,14 @@ export function HistoryPage() {
     setFromDate(from.toISOString().slice(0, 10));
   }
 
+  function resetFilters() {
+    setSearch("");
+    setFromDate("");
+    setToDate("");
+    setSortBy("date");
+    setSortDir("desc");
+  }
+
   useEffect(() => {
     if (!profile?.uid) return;
     const unsub = subscribeReportsByUser(
@@ -100,7 +108,7 @@ export function HistoryPage() {
           Обновить
         </Button>
       </div>
-      <div className="glass-toolbar mb-3 animate-in-up">
+      <div className="glass-toolbar surface-floating mb-3 animate-in-up">
         <div className="grid gap-2 md:grid-cols-3">
           <Input
             placeholder="Поиск: линия, тип изоляции, блок"
@@ -121,7 +129,7 @@ export function HistoryPage() {
             aria-label="Дата до"
           />
         </div>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
+        <div className="responsive-toolbar-controls sm:mt-2 sm:flex sm:flex-wrap sm:items-center sm:gap-2">
           <Button type="button" variant="secondary" size="sm" className="flex-1 sm:flex-none" onClick={() => applyRange(7)}>
             7 дней
           </Button>
@@ -131,8 +139,11 @@ export function HistoryPage() {
           <Button type="button" variant="secondary" size="sm" className="flex-1 sm:flex-none" onClick={() => applyRange("all")}>
             Всё
           </Button>
+          <Button type="button" variant="outline" size="sm" className="flex-1 sm:flex-none" onClick={resetFilters}>
+            Сбросить фильтры
+          </Button>
           <select
-            className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm sm:h-9 theme-dark:border-slate-700 theme-dark:bg-slate-900"
+            className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm sm:h-9 sm:w-auto theme-dark:border-slate-700 theme-dark:bg-slate-900"
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as "date" | "length")}
             aria-label="Сортировать по"
@@ -141,7 +152,7 @@ export function HistoryPage() {
             <option value="length">По длине</option>
           </select>
           <select
-            className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm sm:h-9 theme-dark:border-slate-700 theme-dark:bg-slate-900"
+            className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm sm:h-9 sm:w-auto theme-dark:border-slate-700 theme-dark:bg-slate-900"
             value={sortDir}
             onChange={(e) => setSortDir(e.target.value as "desc" | "asc")}
             aria-label="Порядок сортировки"
@@ -155,15 +166,28 @@ export function HistoryPage() {
         </div>
       </div>
       {!rows.length ? (
-        <Card>
-          <CardContent className="p-5 text-slate-600 theme-dark:text-slate-300">
-            Пока нет сохраненных отчетов.
+        <Card className="surface-floating">
+          <CardContent className="space-y-3 p-5 text-slate-600 theme-dark:text-slate-300">
+            <p>Пока нет сохраненных отчетов.</p>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" size="sm" onClick={() => navigate("/form")}>
+                Создать первый отчёт
+              </Button>
+              <Button type="button" variant="secondary" size="sm" onClick={() => setListVersion((v) => v + 1)}>
+                Проверить снова
+              </Button>
+            </div>
           </CardContent>
         </Card>
       ) : !filteredRows.length ? (
-        <Card>
-          <CardContent className="p-5 text-slate-600 theme-dark:text-slate-300">
-            По заданным фильтрам ничего не найдено.
+        <Card className="surface-floating">
+          <CardContent className="space-y-3 p-5 text-slate-600 theme-dark:text-slate-300">
+            <p>По заданным фильтрам ничего не найдено.</p>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="secondary" size="sm" onClick={resetFilters}>
+                Сбросить фильтры
+              </Button>
+            </div>
           </CardContent>
         </Card>
       ) : (

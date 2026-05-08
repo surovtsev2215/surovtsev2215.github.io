@@ -1,14 +1,44 @@
-import { memo, useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useLocation, useParams } from "react-router-dom";
-import { FileText } from "lucide-react";
+import { ClipboardList, FileText } from "lucide-react";
+import { toast } from "sonner";
 import { useAuth } from "../contexts/AuthContext";
 import { fetchReportById } from "../lib/reportStore";
-import { getReportPipeCount, getReportTotalLength } from "../lib/reportAggregations";
-import type { PipeEntry, Report } from "../types";
+import {
+  formatLineNames,
+  getReportPipeCount,
+  getReportTotalLength
+} from "../lib/reportAggregations";
+import { submitReportReview } from "../lib/reviewApi";
+import { isApiConfigured } from "../lib/runtimeConfig";
+import type { PipeEntry, Report, ReportReviewStatus } from "../types";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Dialog, DialogContent, DialogTitle } from "../components/ui/dialog";
 import { Skeleton } from "../components/ui/skeleton";
+import { TaskDialog } from "../components/itr/TaskDialog";
+import { useUsersDirectory } from "../hooks/useUsersDirectory";
+import { formatFullNameForDisplay } from "../lib/normalizeFullName";
+
+const STATUS_LABELS: Record<ReportReviewStatus, string> = {
+  submitted: "На согласование",
+  approved: "Согласован",
+  needs_fix: "На доработку"
+};
+
+function StatusBadge({ status }: { status: ReportReviewStatus }) {
+  const cls =
+    status === "approved"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-700 theme-dark:border-emerald-800 theme-dark:bg-emerald-950/40 theme-dark:text-emerald-300"
+      : status === "needs_fix"
+        ? "border-amber-200 bg-amber-50 text-amber-700 theme-dark:border-amber-800 theme-dark:bg-amber-950/40 theme-dark:text-amber-300"
+        : "border-sky-200 bg-sky-50 text-sky-700 theme-dark:border-sky-800 theme-dark:bg-sky-950/40 theme-dark:text-sky-300";
+  return (
+    <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${cls}`}>
+      {STATUS_LABELS[status]}
+    </span>
+  );
+}
 
 const ReportPhotoThumb = memo(function ReportPhotoThumb({
   url,
@@ -62,7 +92,7 @@ const PipeCard = memo(function PipeCard({
   ];
 
   return (
-    <Card className="soft-ring animate-in-up">
+    <Card className="soft-ring surface-floating animate-in-up">
       <CardHeader>
         <CardTitle className="text-base">
           Труба №{index + 1}
@@ -110,9 +140,13 @@ export function ReportDetailPage() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
   const { profile, role } = useAuth();
+  const usersDirectory = useUsersDirectory();
   const [report, setReport] = useState<Report | null | undefined>(undefined);
   const [lightbox, setLightbox] = useState<string | null>(null);
   const openLightbox = useCallback((url: string) => setLightbox(url), []);
+  const [taskDialogOpen, setTaskDialogOpen] = useState(false);
+  const [reviewNote, setReviewNote] = useState("");
+  const [reviewSubmitting, setReviewSubmitting] = useState<null | ReportReviewStatus>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -120,7 +154,10 @@ export function ReportDetailPage() {
     void (async () => {
       try {
         const row = await fetchReportById(id);
-        if (!cancelled) setReport(row);
+        if (!cancelled) {
+          setReport(row);
+          if (row?.review?.note) setReviewNote(row.review.note);
+        }
       } catch {
         if (!cancelled) setReport(null);
       }
@@ -129,6 +166,33 @@ export function ReportDetailPage() {
       cancelled = true;
     };
   }, [id]);
+
+  const author = useMemo(() => {
+    if (!report) return undefined;
+    return usersDirectory.byUid(report.userId);
+  }, [report, usersDirectory]);
+
+  async function handleReview(status: ReportReviewStatus) {
+    if (!report?.id) return;
+    setReviewSubmitting(status);
+    try {
+      const updated = await submitReportReview(report.id, status, reviewNote.trim() || undefined);
+      if (updated) {
+        setReport(updated);
+        toast.success(
+          status === "approved"
+            ? "Отчёт согласован"
+            : status === "needs_fix"
+              ? "Отчёт возвращён на доработку"
+              : "Статус сброшен"
+        );
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Не удалось сохранить решение");
+    } finally {
+      setReviewSubmitting(null);
+    }
+  }
 
   if (report === undefined) {
     return (
@@ -145,7 +209,7 @@ export function ReportDetailPage() {
       <div className="space-y-4">
         <p className="text-slate-600 theme-dark:text-slate-300">Отчёт не найден.</p>
         <Button variant="secondary" asChild>
-          <Link to={role === "admin" ? "/admin/dashboard" : role === "director" ? "/director/reports" : "/history"}>
+          <Link to={role === "admin" ? "/admin/users" : role === "director" ? "/director/reports" : "/history"}>
             Назад к списку
           </Link>
         </Button>
@@ -159,10 +223,15 @@ export function ReportDetailPage() {
 
   const directorBack = (location.state as { directorBackTo?: string } | null)?.directorBackTo;
   const backTo =
-    role === "admin" ? "/admin/dashboard" : role === "director" ? directorBack ?? "/director/reports" : "/history";
+    role === "admin" ? "/admin/users" : role === "director" ? directorBack ?? "/director/reports" : "/history";
 
   const pipeCount = getReportPipeCount(report);
   const totalLen = getReportTotalLength(report);
+  const status = (report.status ?? "submitted") as ReportReviewStatus;
+  const canReview = (role === "director" || role === "admin") && isApiConfigured;
+  const canTask = canReview;
+  const authorDisplay = author?.fullName ? formatFullNameForDisplay(author.fullName) : report.userEmail;
+  const reportLabel = `${report.date} · ${formatLineNames(report)}`;
 
   let shiftValueText = "—";
   if (report.shiftWork && report.shiftWork.value > 0) {
@@ -182,23 +251,102 @@ export function ReportDetailPage() {
 
   return (
     <div className="page-stack">
-      <div className="surface-highlight animate-in-up p-4 sm:p-5">
+      <div className="surface-highlight surface-hero-light animate-in-up p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3">
-          <div>
+          <div className="min-w-0">
             <h2 className="text-xl font-semibold tracking-tight">Карточка отчёта</h2>
-            <p className="mt-1 text-sm text-slate-100/90">Общие данные смены и параметры по каждой трубе.</p>
+            <p className="mt-1 truncate text-sm text-slate-100/90">
+              {report.date} · {authorDisplay}
+              {author?.position ? ` · ${author.position}` : ""}
+            </p>
+            <div className="mt-2">
+              <StatusBadge status={status} />
+            </div>
           </div>
           <FileText className="h-5 w-5 shrink-0 text-amber-300" />
         </div>
       </div>
-      <div className="content-section flex flex-wrap items-center justify-between gap-2">
+      <div className="surface-floating itr-panel itr-priority-info flex flex-wrap items-center justify-between gap-2 p-3 sm:p-4">
         <h3 className="section-title text-sm uppercase tracking-wide">Отчёт</h3>
-        <Button variant="secondary" size="sm" className="w-full sm:w-auto" asChild>
-          <Link to={backTo}>← Назад</Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {canTask && (
+            <Button variant="secondary" size="sm" onClick={() => setTaskDialogOpen(true)}>
+              <ClipboardList className="h-4 w-4" aria-hidden /> Поставить задачу
+            </Button>
+          )}
+          <Button variant="secondary" size="sm" asChild>
+            <Link to={backTo}>← Назад</Link>
+          </Button>
+        </div>
       </div>
 
-      <Card className="soft-ring animate-in-up">
+      {canReview && (
+        <Card className="soft-ring surface-floating">
+          <CardHeader>
+            <CardTitle className="text-base">Решение ИТР</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {report.review ? (
+              <div className="pretty-list-item p-3 text-sm">
+                <div className="text-xs text-slate-500 theme-dark:text-slate-400">
+                  {formatFullNameForDisplay(report.review.byFullName || "")}
+                  {report.review.byPosition ? ` · ${report.review.byPosition}` : ""}
+                  {" · "}
+                  {new Date(report.review.decidedAt).toLocaleString("ru-RU")}
+                </div>
+                {report.review.note ? (
+                  <p className="mt-1 whitespace-pre-wrap text-sm">{report.review.note}</p>
+                ) : null}
+              </div>
+            ) : null}
+            <textarea
+              className="min-h-[80px] w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm theme-dark:border-slate-700 theme-dark:bg-slate-900"
+              placeholder="Комментарий к решению (опционально, обязателен при возврате на доработку)"
+              value={reviewNote}
+              onChange={(e) => setReviewNote(e.target.value)}
+              rows={3}
+            />
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                disabled={reviewSubmitting !== null}
+                onClick={() => void handleReview("approved")}
+              >
+                {reviewSubmitting === "approved" ? "Сохранение…" : "Согласовать"}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                disabled={reviewSubmitting !== null}
+                onClick={() => {
+                  if (!reviewNote.trim()) {
+                    toast.error("Укажите причину возврата на доработку.");
+                    return;
+                  }
+                  void handleReview("needs_fix");
+                }}
+              >
+                {reviewSubmitting === "needs_fix" ? "Сохранение…" : "Вернуть на доработку"}
+              </Button>
+              {status !== "submitted" && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={reviewSubmitting !== null}
+                  onClick={() => void handleReview("submitted")}
+                >
+                  Сбросить статус
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card className="soft-ring surface-floating animate-in-up">
         <CardHeader>
           <CardTitle>Общие данные</CardTitle>
         </CardHeader>
@@ -278,6 +426,16 @@ export function ReportDetailPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {canTask && report.id ? (
+        <TaskDialog
+          open={taskDialogOpen}
+          onOpenChange={setTaskDialogOpen}
+          defaultAssigneeUid={report.userId}
+          defaultRelatedReportId={report.id}
+          defaultRelatedReportLabel={reportLabel}
+        />
+      ) : null}
     </div>
   );
 }

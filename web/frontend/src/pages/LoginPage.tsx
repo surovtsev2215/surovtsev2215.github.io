@@ -15,7 +15,7 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   if (user || profile) {
-    const target = role === "admin" ? "/admin/dashboard" : role === "director" ? "/director" : "/form";
+    const target = role === "admin" ? "/admin/users" : role === "director" ? "/director" : "/form";
     return <Navigate to={target} replace />;
   }
 
@@ -23,9 +23,9 @@ export function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError("");
-    if (password.length < 4) {
+    if (password.length < 2) {
       setLoading(false);
-      setError("Пароль должен быть минимум 4 символа.");
+      setError("Пароль должен быть минимум 2 символа.");
       return;
     }
     try {
@@ -38,7 +38,7 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-3 py-6 sm:px-4 sm:py-8">
+    <div className="auth-shell flex min-h-screen items-center justify-center px-3 py-6 sm:px-4 sm:py-8">
       <form
         onSubmit={handleSubmit}
         className="glass soft-ring page-stack w-full max-w-md rounded-2xl p-4 shadow-card sm:p-6"
@@ -47,6 +47,9 @@ export function LoginPage() {
         <div className="surface-highlight mb-5 p-4">
           <h1 className="text-2xl font-semibold">Система ПТО</h1>
           <p className="mt-1 text-sm text-slate-100/90">Контроль изоляции трубопроводов</p>
+          <div className="mt-3 inline-flex rounded-full border border-white/30 bg-white/10 px-2.5 py-1 text-[11px] font-medium text-white/95">
+            Вход в рабочее пространство
+          </div>
         </div>
         <div className="space-y-1">
           <Label htmlFor="login-fullname">ФамилияИО</Label>
@@ -74,7 +77,7 @@ export function LoginPage() {
             required
           />
           <p className="text-xs text-slate-500 theme-dark:text-slate-400">
-            Пароль: минимум 4 символа. Можно проверить ввод через иконку глаза.
+            Пароль: минимум 2 символа. Можно проверить ввод через иконку глаза.
           </p>
         </div>
         {error && (

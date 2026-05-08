@@ -4,16 +4,21 @@ import { Toaster } from "sonner";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { AppLayout } from "./components/layout/AppLayout";
 import { Skeleton } from "./components/ui/skeleton";
+import { buildItrAccess, type ItrSection } from "./lib/itrAccess";
 import type { UserRole } from "./types";
 
 const loadLoginPage = () => import("./pages/LoginPage");
 const loadRegisterPage = () => import("./pages/RegisterPage");
 const loadFormPage = () => import("./pages/FormPage");
 const loadHistoryPage = () => import("./pages/HistoryPage");
-const loadAdminDashboardPage = () => import("./pages/AdminDashboardPage");
 const loadAdminUsersPage = () => import("./pages/AdminUsersPage");
-const loadDirectorOverviewPage = () => import("./pages/DirectorOverviewPage");
+const loadDirectorHomePage = () => import("./pages/DirectorHomePage");
+const loadDirectorWorkspacePage = () => import("./pages/DirectorWorkspacePage");
 const loadDirectorReportsPage = () => import("./pages/DirectorReportsPage");
+const loadDirectorTeamPage = () => import("./pages/DirectorTeamPage");
+const loadDirectorTasksPage = () => import("./pages/DirectorTasksPage");
+const loadDirectorAnalyticsPage = () => import("./pages/DirectorAnalyticsPage");
+const loadDirectorApprovalsPage = () => import("./pages/DirectorApprovalsPage");
 const loadDirectorProfilePage = () => import("./pages/DirectorProfilePage");
 const loadReportDetailPage = () => import("./pages/ReportDetailPage");
 
@@ -21,20 +26,11 @@ const LoginPage = lazy(() => loadLoginPage().then((m) => ({ default: m.LoginPage
 const RegisterPage = lazy(() => loadRegisterPage().then((m) => ({ default: m.RegisterPage })));
 const FormPage = lazy(() => loadFormPage().then((m) => ({ default: m.FormPage })));
 const HistoryPage = lazy(() => loadHistoryPage().then((m) => ({ default: m.HistoryPage })));
-const AdminDashboardPage = lazy(() =>
-  loadAdminDashboardPage().then((m) => ({ default: m.AdminDashboardPage }))
-);
 const AdminUsersPage = lazy(() =>
   loadAdminUsersPage().then((m) => ({ default: m.AdminUsersPage }))
 );
-const DirectorOverviewPage = lazy(() =>
-  loadDirectorOverviewPage().then((m) => ({ default: m.DirectorOverviewPage }))
-);
-const DirectorReportsPage = lazy(() =>
-  loadDirectorReportsPage().then((m) => ({ default: m.DirectorReportsPage }))
-);
-const DirectorProfilePage = lazy(() =>
-  loadDirectorProfilePage().then((m) => ({ default: m.DirectorProfilePage }))
+const DirectorWorkspacePage = lazy(() =>
+  loadDirectorWorkspacePage().then((m) => ({ default: m.DirectorWorkspacePage }))
 );
 const ReportDetailPage = lazy(() =>
   loadReportDetailPage().then((m) => ({ default: m.ReportDetailPage }))
@@ -71,10 +67,15 @@ function ProtectedRoute({ allowedRoles }: { allowedRoles?: UserRole[] }) {
   return <Outlet />;
 }
 
+function ItrLegacyRedirect({ section }: { section: ItrSection }) {
+  if (section === "home") return <Navigate to="/director" replace />;
+  return <Navigate to={`/director?section=${section}`} replace />;
+}
+
 function RootRedirect() {
   const { role } = useAuth();
   if (role === "admin") {
-    return <Navigate to="/admin/dashboard" replace />;
+    return <Navigate to="/admin/users" replace />;
   }
   if (role === "director") {
     return <Navigate to="/director" replace />;
@@ -91,14 +92,21 @@ function RoutePrefetcher() {
       void loadRegisterPage();
       void loadReportDetailPage();
       if (role === "admin") {
-        void loadAdminDashboardPage();
         void loadAdminUsersPage();
         return;
       }
       if (role === "director") {
-        void loadDirectorOverviewPage();
-        void loadDirectorReportsPage();
-        void loadDirectorProfilePage();
+        void loadDirectorWorkspacePage();
+        const access = buildItrAccess(profile?.position, profile?.allowedSections);
+        for (const section of access.sections) {
+          if (section === "home") void loadDirectorHomePage();
+          if (section === "reports") void loadDirectorReportsPage();
+          if (section === "team") void loadDirectorTeamPage();
+          if (section === "tasks") void loadDirectorTasksPage();
+          if (section === "analytics") void loadDirectorAnalyticsPage();
+          if (section === "approvals") void loadDirectorApprovalsPage();
+          if (section === "profile") void loadDirectorProfilePage();
+        }
         return;
       }
       void loadFormPage();
@@ -142,16 +150,20 @@ export default function App() {
 
           <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
             <Route element={<AppLayout />}>
-              <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+              <Route path="/admin/dashboard" element={<Navigate to="/admin/users" replace />} />
               <Route path="/admin/users" element={<AdminUsersPage />} />
             </Route>
           </Route>
 
           <Route element={<ProtectedRoute allowedRoles={["director"]} />}>
             <Route element={<AppLayout />}>
-              <Route path="/director" element={<DirectorOverviewPage />} />
-              <Route path="/director/reports" element={<DirectorReportsPage />} />
-              <Route path="/director/profile" element={<DirectorProfilePage />} />
+              <Route path="/director" element={<DirectorWorkspacePage />} />
+              <Route path="/director/reports" element={<ItrLegacyRedirect section="reports" />} />
+              <Route path="/director/team" element={<ItrLegacyRedirect section="team" />} />
+              <Route path="/director/tasks" element={<ItrLegacyRedirect section="tasks" />} />
+              <Route path="/director/analytics" element={<ItrLegacyRedirect section="analytics" />} />
+              <Route path="/director/approvals" element={<ItrLegacyRedirect section="approvals" />} />
+              <Route path="/director/profile" element={<ItrLegacyRedirect section="profile" />} />
             </Route>
           </Route>
         </Routes>

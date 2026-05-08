@@ -106,7 +106,7 @@ export function getDemoAuditEvents(): DemoAuditEvent[] {
 export function createDemoStaffUser(input: { fullName: string; password: string; role: "isolator" | "director" }) {
   const fullName = formatFullNameForDisplay(input.fullName);
   if (!fullName) throw new Error("Введите ФамилияИО.");
-  if (input.password.length < 4) throw new Error("Пароль должен быть не короче 4 символов.");
+  if (input.password.length < 2) throw new Error("Пароль должен быть не короче 2 символов.");
   const norm = normalizeFullName(fullName);
   const users = getDemoUsers();
   if (users.some((u) => normalizeFullName(u.fullName) === norm)) {
@@ -141,7 +141,7 @@ export function updateDemoUser(
   if (!uid) throw new Error("Не указан пользователь.");
   const fullName = formatFullNameForDisplay(input.fullName);
   if (!fullName) throw new Error("Введите ФамилияИО.");
-  if (input.password.length < 4) throw new Error("Пароль должен быть не короче 4 символов.");
+  if (input.password.length < 2) throw new Error("Пароль должен быть не короче 2 символов.");
   const users = getDemoUsers();
   const idx = users.findIndex((u) => u.uid === uid);
   if (idx < 0) throw new Error("Пользователь не найден.");

@@ -15,7 +15,7 @@ export function RegisterPage() {
   const [loading, setLoading] = useState(false);
 
   if (user || profile) {
-    const target = role === "admin" ? "/admin/dashboard" : role === "director" ? "/director" : "/form";
+    const target = role === "admin" ? "/admin/users" : role === "director" ? "/director" : "/form";
     return <Navigate to={target} replace />;
   }
 
@@ -30,8 +30,8 @@ export function RegisterPage() {
       setError("Введите пароль.");
       return;
     }
-    if (password.length < 4) {
-      setError("Пароль должен быть минимум 4 символа.");
+    if (password.length < 2) {
+      setError("Пароль должен быть минимум 2 символа.");
       return;
     }
     setLoading(true);
@@ -45,7 +45,7 @@ export function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-3 py-6 sm:px-4 sm:py-8">
+    <div className="auth-shell flex min-h-screen items-center justify-center px-3 py-6 sm:px-4 sm:py-8">
       <form
         onSubmit={handleSubmit}
         className="glass soft-ring page-stack w-full max-w-md rounded-2xl p-4 shadow-card sm:p-6"
@@ -56,6 +56,9 @@ export function RegisterPage() {
           <p className="mt-1 text-sm text-slate-100/90">
             Первый зарегистрированный пользователь станет администратором с расширенными правами.
           </p>
+          <div className="mt-3 inline-flex rounded-full border border-white/30 bg-white/10 px-2.5 py-1 text-[11px] font-medium text-white/95">
+            Создание аккаунта
+          </div>
         </div>
         <div className="space-y-1">
           <Label htmlFor="register-fullname">ФамилияИО</Label>
@@ -96,7 +99,7 @@ export function RegisterPage() {
             aria-describedby={error ? "register-error" : undefined}
             required
           />
-          <p className="text-xs text-slate-500 theme-dark:text-slate-400">Минимальная длина пароля: 4 символа.</p>
+          <p className="text-xs text-slate-500 theme-dark:text-slate-400">Минимальная длина пароля: 2 символа.</p>
         </div>
         {error && (
           <p
