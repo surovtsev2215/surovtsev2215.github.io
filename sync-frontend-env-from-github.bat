@@ -6,6 +6,7 @@ set "ROOT_DIR=%~dp0"
 if "%ROOT_DIR:~-1%"=="\" set "ROOT_DIR=%ROOT_DIR:~0,-1%"
 set "ENV_FILE=%ROOT_DIR%\web\frontend\.env.local"
 set "TMP_FILE=%ENV_FILE%.tmp"
+set "API_BASE_URL="
 
 echo [ПТО] Синхронизация web\frontend\.env.local из GitHub Variables
 
@@ -43,6 +44,10 @@ for %%V in (%VAR_LIST%) do (
   )
 )
 
+call :loadLocalApiBaseUrl
+if not defined API_BASE_URL set "API_BASE_URL=http://localhost:8787"
+>> "%TMP_FILE%" echo VITE_API_BASE_URL=%API_BASE_URL%
+
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "$src='%TMP_FILE%'; $dst='%ENV_FILE%'; $c=Get-Content -LiteralPath $src -Raw; Set-Content -LiteralPath $dst -Value $c -Encoding UTF8"
 if errorlevel 1 (
@@ -55,6 +60,13 @@ del /q "%TMP_FILE%" >nul 2>nul
 echo Готово: %ENV_FILE% обновлен из GitHub Variables.
 echo Репозиторий: %REPO%
 echo Важно: значения должны храниться в GitHub Actions Variables ^(не в Secrets^).
+exit /b 0
+
+:loadLocalApiBaseUrl
+if not exist "%ENV_FILE%" exit /b 0
+for /f "usebackq tokens=1,* delims==" %%A in (`type "%ENV_FILE%" ^| findstr /R /I "^VITE_API_BASE_URL="`) do (
+  set "API_BASE_URL=%%B"
+)
 exit /b 0
 
 :fetchVar

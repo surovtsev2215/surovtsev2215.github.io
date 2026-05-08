@@ -49,22 +49,28 @@ if (typeof window !== "undefined") {
   // #endregion
 }
 
-const updateSW = registerSW({
-  immediate: true,
-  onNeedRefresh() {
-    // Force activation of the new service worker right away
-    // so users do not stay on stale cached UI.
-    updateSW(true);
-  }
-});
+const isLocalHost =
+  typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
 
-if (typeof window !== "undefined" && "serviceWorker" in navigator) {
-  let reloaded = false;
-  navigator.serviceWorker.addEventListener("controllerchange", () => {
-    if (reloaded) return;
-    reloaded = true;
-    window.location.reload();
+if (!isLocalHost) {
+  const updateSW = registerSW({
+    immediate: true,
+    onNeedRefresh() {
+      // Force activation of the new service worker right away
+      // so users do not stay on stale cached UI.
+      updateSW(true);
+    }
   });
+
+  if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (reloaded) return;
+      reloaded = true;
+      window.location.reload();
+    });
+  }
 }
 
 ReactDOM.createRoot(document.getElementById("root")!).render(

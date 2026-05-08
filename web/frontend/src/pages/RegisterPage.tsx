@@ -30,6 +30,10 @@ export function RegisterPage() {
       setError("Введите пароль.");
       return;
     }
+    if (password.length < 4) {
+      setError("Пароль должен быть минимум 4 символа.");
+      return;
+    }
     setLoading(true);
     try {
       await register(fullName.trim(), password);
@@ -66,9 +70,7 @@ export function RegisterPage() {
             placeholder="Для первого входа можно любое имя"
             required
           />
-          <p className="text-xs text-slate-500 theme-dark:text-slate-400">
-            После создания первого админа обычная регистрация: ФамилияИО с отчеством.
-          </p>
+          <p className="text-xs text-slate-500 theme-dark:text-slate-400">Вход и регистрация: ФамилияИО + пароль.</p>
         </div>
         <div className="space-y-1">
           <Label htmlFor="register-password">Пароль</Label>
@@ -94,7 +96,7 @@ export function RegisterPage() {
             aria-describedby={error ? "register-error" : undefined}
             required
           />
-          <p className="text-xs text-slate-500 theme-dark:text-slate-400">Для первого админа пароль может быть любым непустым.</p>
+          <p className="text-xs text-slate-500 theme-dark:text-slate-400">Минимальная длина пароля: 4 символа.</p>
         </div>
         {error && (
           <p

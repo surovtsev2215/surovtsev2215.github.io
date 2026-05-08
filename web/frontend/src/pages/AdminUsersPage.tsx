@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { httpsCallable } from "firebase/functions";
 import { Button } from "../components/ui/button";
@@ -15,8 +15,10 @@ import {
 } from "../lib/demoUsers";
 import { isFirebaseConfigured } from "../lib/firebase";
 import { functions } from "../lib/firebase";
-import type { UserRole } from "../types";
-import { formatFullNameForDisplay, hasPatronymic } from "../lib/normalizeFullName";
+import { apiRequest } from "../lib/apiClient";
+import { isApiConfigured } from "../lib/runtimeConfig";
+import type { Profile, UserRole } from "../types";
+import { formatFullNameForDisplay } from "../lib/normalizeFullName";
 
 export function AdminUsersPage() {
   const [fullName, setFullName] = useState("");
@@ -31,6 +33,8 @@ export function AdminUsersPage() {
   const [remotePassword, setRemotePassword] = useState("");
   const [remoteRole, setRemoteRole] = useState<"isolator" | "director">("isolator");
   const [remoteLoading, setRemoteLoading] = useState(false);
+  const [apiUsers, setApiUsers] = useState<Profile[]>([]);
+  const [apiUsersLoading, setApiUsersLoading] = useState(false);
 
   const users = useMemo(() => getDemoUsers(), [version]);
   const audit = useMemo(() => getDemoAuditEvents(), [version]);
@@ -39,13 +43,26 @@ export function AdminUsersPage() {
     { uid: string; role: string }
   >(functions, "registerByFullName");
 
-  function addDemoUser() {
-    if (!fullName.trim() || password.length < 6) {
-      toast.error("Заполните ФамилияИО и пароль (минимум 6 символов).");
-      return;
+  useEffect(() => {
+    if (!isApiConfigured) return;
+    void loadApiUsers();
+  }, []);
+
+  async function loadApiUsers() {
+    setApiUsersLoading(true);
+    try {
+      const { users: rows } = await apiRequest<{ users: Profile[] }>("/api/admin/users");
+      setApiUsers(rows);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Не удалось загрузить пользователей");
+    } finally {
+      setApiUsersLoading(false);
     }
-    if (!hasPatronymic(fullName)) {
-      toast.error("Укажите ФамилияИО с отчеством (например: ИвановИИ).");
+  }
+
+  function addDemoUser() {
+    if (!fullName.trim() || password.length < 4) {
+      toast.error("Заполните ФамилияИО и пароль (минимум 4 символа).");
       return;
     }
     try {
@@ -95,8 +112,8 @@ export function AdminUsersPage() {
 
   function saveEdit() {
     if (!editUid) return;
-    if (!hasPatronymic(editName)) {
-      toast.error("Укажите ФамилияИО с отчеством (например: ИвановИИ).");
+    if (editPassword.length < 4) {
+      toast.error("Пароль должен быть минимум 4 символа.");
       return;
     }
     try {
@@ -110,24 +127,34 @@ export function AdminUsersPage() {
   }
 
   async function addFirebaseUser() {
-    if (!remoteFullName.trim() || remotePassword.length < 6) {
-      toast.error("Заполните ФамилияИО и пароль (минимум 6 символов).");
-      return;
-    }
-    if (!hasPatronymic(remoteFullName)) {
-      toast.error("Укажите ФамилияИО с отчеством (например: ИвановИИ).");
+    if (!remoteFullName.trim() || remotePassword.length < 4) {
+      toast.error("Заполните ФамилияИО и пароль (минимум 4 символа).");
       return;
     }
     setRemoteLoading(true);
     try {
-      await registerByFullNameFn({
-        fullName: remoteFullName.trim(),
-        password: remotePassword,
-        requestedRole: remoteRole
-      });
+      if (isApiConfigured) {
+        await apiRequest<{ profile: { uid: string } }>("/api/admin/users", {
+          method: "POST",
+          body: JSON.stringify({
+            fullName: remoteFullName.trim(),
+            password: remotePassword,
+            requestedRole: remoteRole
+          })
+        });
+      } else {
+        await registerByFullNameFn({
+          fullName: remoteFullName.trim(),
+          password: remotePassword,
+          requestedRole: remoteRole
+        });
+      }
       setRemoteFullName("");
       setRemotePassword("");
       setRemoteRole("isolator");
+      if (isApiConfigured) {
+        await loadApiUsers();
+      }
       toast.success("Пользователь создан.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Не удалось создать пользователя";
@@ -142,7 +169,7 @@ export function AdminUsersPage() {
       <div className="surface-highlight p-4 sm:p-5">
         <h2 className="text-xl font-semibold tracking-tight">Пользователи</h2>
         <p className="mt-1 text-sm text-slate-200/95">
-          Управление доступом по ФамилияИО и паролю в demo-среде.
+          Управление доступом по ФамилияИО и паролю.
         </p>
       </div>
       <div className="divider-fade" />
@@ -151,10 +178,10 @@ export function AdminUsersPage() {
           <Card>
             <CardContent className="space-y-3 p-4">
               <p className="text-sm text-slate-600 theme-dark:text-slate-300">
-                Demo-режим полностью повторяет рабочее управление пользователями.
+                Локальный режим управления пользователями.
               </p>
               <p className="text-xs text-slate-500 theme-dark:text-slate-400">
-                Отчество обязательно (формат: ФамилияИО, например: ИвановИИ).
+                Формат входа: ФамилияИО и пароль от 4 символов.
               </p>
               <div className="grid gap-2 md:grid-cols-3">
                 <div>
@@ -172,7 +199,7 @@ export function AdminUsersPage() {
                     id="demo-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Минимум 6 символов"
+                    placeholder="Минимум 4 символа"
                   />
                 </div>
                 <div>
@@ -189,7 +216,7 @@ export function AdminUsersPage() {
                 </div>
               </div>
               <Button type="button" onClick={addDemoUser}>
-                Создать demo-пользователя
+                Создать пользователя
               </Button>
             </CardContent>
           </Card>
@@ -302,7 +329,7 @@ export function AdminUsersPage() {
           </Card>
           <Card>
             <CardContent className="p-4">
-              <p className="mb-2 text-sm text-slate-600 theme-dark:text-slate-300">Журнал действий (demo):</p>
+              <p className="mb-2 text-sm text-slate-600 theme-dark:text-slate-300">Журнал действий:</p>
               {!audit.length ? (
                 <p className="text-xs text-slate-500 theme-dark:text-slate-400">Пока нет записей.</p>
               ) : (
@@ -328,51 +355,96 @@ export function AdminUsersPage() {
           </Card>
         </>
       ) : (
-        <Card>
-          <CardContent className="space-y-3 p-4">
-            <p className="text-sm text-slate-600 theme-dark:text-slate-300">
-              Создание пользователей в Firebase. По умолчанию роль - изолировщик.
-            </p>
-            <p className="text-xs text-slate-500 theme-dark:text-slate-400">
-              Отчество обязательно (формат: ФамилияИО, например: ИвановИИ).
-            </p>
-            <div className="grid gap-2 md:grid-cols-3">
-              <div>
-                <Label htmlFor="firebase-fullname">ФамилияИО</Label>
-                <Input
-                  id="firebase-fullname"
-                  value={remoteFullName}
-                  onChange={(e) => setRemoteFullName(e.target.value)}
-                  placeholder="ИвановИИ"
-                />
+        <>
+          <Card>
+            <CardContent className="space-y-3 p-4">
+              <p className="text-sm text-slate-600 theme-dark:text-slate-300">
+                {isApiConfigured
+                  ? "Создание пользователей через собственный backend. По умолчанию роль - изолировщик."
+                  : "Создание пользователей в Firebase. По умолчанию роль - изолировщик."}
+              </p>
+              <p className="text-xs text-slate-500 theme-dark:text-slate-400">
+                Формат входа: ФамилияИО и пароль от 4 символов.
+              </p>
+              <div className="grid gap-2 md:grid-cols-3">
+                <div>
+                  <Label htmlFor="firebase-fullname">ФамилияИО</Label>
+                  <Input
+                    id="firebase-fullname"
+                    value={remoteFullName}
+                    onChange={(e) => setRemoteFullName(e.target.value)}
+                    placeholder="ИвановИИ"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="firebase-password">Пароль</Label>
+                  <PasswordInput
+                    id="firebase-password"
+                    value={remotePassword}
+                    onChange={(e) => setRemotePassword(e.target.value)}
+                    placeholder="Минимум 4 символа"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="firebase-role">Роль</Label>
+                  <select
+                    id="firebase-role"
+                    className="h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm theme-dark:border-slate-700 theme-dark:bg-slate-900"
+                    value={remoteRole}
+                    onChange={(e) => setRemoteRole(e.target.value === "director" ? "director" : "isolator")}
+                  >
+                    <option value="isolator">Сотрудник (изолировщик)</option>
+                    <option value="director">Директор</option>
+                  </select>
+                </div>
               </div>
-              <div>
-                <Label htmlFor="firebase-password">Пароль</Label>
-                <PasswordInput
-                  id="firebase-password"
-                  value={remotePassword}
-                  onChange={(e) => setRemotePassword(e.target.value)}
-                  placeholder="Минимум 6 символов"
-                />
+              <Button type="button" disabled={remoteLoading} onClick={addFirebaseUser}>
+                {remoteLoading ? "Создание..." : "Создать пользователя"}
+              </Button>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <p className="text-sm text-slate-600 theme-dark:text-slate-300">Пользователи (online)</p>
+                <Button type="button" variant="outline" size="sm" onClick={() => void loadApiUsers()}>
+                  Обновить
+                </Button>
               </div>
-              <div>
-                <Label htmlFor="firebase-role">Роль</Label>
-                <select
-                  id="firebase-role"
-                  className="h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm theme-dark:border-slate-700 theme-dark:bg-slate-900"
-                  value={remoteRole}
-                  onChange={(e) => setRemoteRole(e.target.value === "director" ? "director" : "isolator")}
-                >
-                  <option value="isolator">Сотрудник (изолировщик)</option>
-                  <option value="director">Директор</option>
-                </select>
-              </div>
-            </div>
-            <Button type="button" disabled={remoteLoading} onClick={addFirebaseUser}>
-              {remoteLoading ? "Создание..." : "Создать пользователя"}
-            </Button>
-          </CardContent>
-        </Card>
+              {apiUsersLoading ? (
+                <p className="text-xs text-slate-500 theme-dark:text-slate-400">Загрузка...</p>
+              ) : !apiUsers.length ? (
+                <p className="text-xs text-slate-500 theme-dark:text-slate-400">Пока нет записей.</p>
+              ) : (
+                <div className="grid gap-2 text-sm md:grid-cols-2">
+                  {apiUsers.map((user) => (
+                    <div key={user.uid} className="surface-muted soft-ring p-3">
+                      <div className="flex items-center justify-between">
+                        <div className="font-semibold text-primary theme-dark:text-accent">
+                          {formatFullNameForDisplay(user.fullName)}
+                        </div>
+                        <span
+                          className={`badge-live rounded-full border px-2 py-0.5 text-xs ${
+                            user.role === "admin"
+                              ? "border-amber-200 bg-amber-50 text-amber-700 theme-dark:border-amber-700 theme-dark:bg-amber-900/40 theme-dark:text-amber-300"
+                              : user.role === "director"
+                                ? "border-violet-200 bg-violet-50 text-violet-700 theme-dark:border-violet-700 theme-dark:bg-violet-900/40 theme-dark:text-violet-300"
+                                : "border-sky-200 bg-sky-50 text-sky-700 theme-dark:border-sky-700 theme-dark:bg-sky-900/40 theme-dark:text-sky-300"
+                          }`}
+                        >
+                          {user.role}
+                        </span>
+                      </div>
+                      <div className="mt-1 text-xs text-slate-500 theme-dark:text-slate-400">
+                        Служебный email: {user.email}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </>
       )}
     </div>
   );

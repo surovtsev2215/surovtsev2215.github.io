@@ -1,5 +1,6 @@
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { isFirebaseConfigured, storage } from "./firebase";
+import { isApiConfigured } from "./runtimeConfig";
 
 async function compressImage(file: File, maxSide = 1024): Promise<Blob> {
   const image = await createImageBitmap(file);
@@ -34,7 +35,7 @@ export async function uploadReportPhotos(
   files: File[],
   _fallbackUrls: string[]
 ) {
-  if (!isFirebaseConfigured) {
+  if (isApiConfigured || !isFirebaseConfigured) {
     const out: string[] = [];
     for (const file of files) {
       const blob = await compressImage(file, 1024);

@@ -35,7 +35,7 @@ if errorlevel 1 (
 powershell -NoProfile -Command "$o=@{sessionId='cddc9f';runId='%DEBUG_RUN_ID%';hypothesisId='H2';location='set-demo-mode.bat:done';message='demo mode enabled';data=@{value='VITE_FORCE_DEMO=1'};timestamp=[DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()};($o|ConvertTo-Json -Compress)|Add-Content -LiteralPath '%DEBUG_LOG_FILE%'" >nul 2>nul
 :: #endregion
 echo [ПТО] Демо режим включен: VITE_FORCE_DEMO=1
-echo Сервисный режим активен: сайт работает без боевого Firebase.
+echo Сервисный режим активен: сайт работает в локальном demo-режиме.
 echo Для рабочего запуска используйте ярлык: ПТО · 1. Включить Онлайн
 echo.
 echo Нажмите любую клавишу, чтобы закрыть окно...

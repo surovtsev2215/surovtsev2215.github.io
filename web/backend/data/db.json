@@ -1,0 +1,35 @@
+{
+  "users": [
+    {
+      "uid": "u-1778230511046-21572",
+      "email": "u-1778230511046-21572@pto.local",
+      "fullName": "Admin",
+      "fullNameNormalized": "admin",
+      "passwordHash": "$2a$10$vqRz.f8zCXeqNZjee62t3eI5eQG.0VKxemIruLKSm9JW78GtX/FV2",
+      "role": "admin",
+      "createdAt": "2026-05-08T08:55:11.099Z",
+      "updatedAt": "2026-05-08T08:55:11.099Z"
+    },
+    {
+      "uid": "u-1778231202060-636957",
+      "email": "u-1778231202060-636957@pto.local",
+      "fullName": "User",
+      "fullNameNormalized": "user",
+      "passwordHash": "$2a$10$amFb9SEU13.HDYb/KcAbauMNt7iRKnYvNGi17A99bDn3VjfWPMb/6",
+      "role": "isolator",
+      "createdAt": "2026-05-08T09:06:42.115Z",
+      "updatedAt": "2026-05-08T09:06:42.115Z"
+    },
+    {
+      "uid": "u-1778231239901-989958",
+      "email": "u-1778231239901-989958@pto.local",
+      "fullName": "СуровцевАС",
+      "fullNameNormalized": "суровцевас",
+      "passwordHash": "$2a$10$8t2UHCdplUjCSVevGrwxMeW0HS2Kb9R2wZgxwvsKV1oJy0Y0InZWW",
+      "role": "isolator",
+      "createdAt": "2026-05-08T09:07:19.946Z",
+      "updatedAt": "2026-05-08T09:07:19.946Z"
+    }
+  ],
+  "reports": []
+}

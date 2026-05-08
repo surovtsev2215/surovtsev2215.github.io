@@ -69,6 +69,25 @@ function resolveRole(requestedRole, isAdmin) {
         return "isolator";
     return requestedRole === "director" || requestedRole === "admin" ? requestedRole : "isolator";
 }
+function extractErrorMessage(error) {
+    if (error instanceof Error && error.message)
+        return error.message;
+    if (typeof error === "object" && error && "message" in error)
+        return String(error.message);
+    return "";
+}
+function toRegisterHttpsError(error) {
+    if (error instanceof https_1.HttpsError)
+        return error;
+    const rawMessage = extractErrorMessage(error).toLowerCase();
+    if (rawMessage.includes("firestore") ||
+        rawMessage.includes("database") ||
+        rawMessage.includes("identity toolkit") ||
+        rawMessage.includes("permission_denied")) {
+        return new https_1.HttpsError("failed-precondition", "Сервер регистрации не настроен. Проверьте, что в Firebase включены Authentication и Firestore.");
+    }
+    return new https_1.HttpsError("internal", "Не удалось создать пользователя.");
+}
 async function registerFailure(db, callerKey, now) {
     const lockRef = db.collection("authRegisterRateLimits").doc(callerKey);
     const lockSnap = await lockRef.get();
@@ -227,9 +246,7 @@ exports.registerByFullName = (0, https_1.onCall)({ region: "us-central1" }, asyn
         catch {
             // ignore cleanup error
         }
-        if (error instanceof https_1.HttpsError)
-            throw error;
-        throw new https_1.HttpsError("internal", "Не удалось создать пользователя.");
+        throw toRegisterHttpsError(error);
     }
     if (!isAdmin) {
         await db.collection("authRegisterRateLimits").doc(callerKey).set({

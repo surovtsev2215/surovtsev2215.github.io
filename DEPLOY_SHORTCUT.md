@@ -5,11 +5,11 @@
 В корне проекта созданы 5 файлов:
 
 1. `create-desktop-shortcuts.bat` — автоматическое создание брендированных ярлыков на рабочем столе.
-2. `set-online-mode.bat` — включает рабочий онлайн-режим (`VITE_FORCE_DEMO=0`).
+2. `set-online-mode.bat` — включает рабочий онлайн-режим (`VITE_FORCE_DEMO=0`) для backend API.
 3. `test-local-site.bat` — локальный production-тест (без публикации в интернет).
 4. `deploy-site.bat` — безопасная публикация (с обязательными проверками).
 5. `set-demo-mode.bat` — сервисный demo-режим (`VITE_FORCE_DEMO=1`).
-6. `sync-frontend-env-from-github.bat` — автосинхронизация `web/frontend/.env.local` из GitHub Actions Variables.
+6. `sync-frontend-env-from-github.bat` — автосинхронизация `web/frontend/.env.local` из GitHub Actions Variables (с сохранением `VITE_API_BASE_URL`).
 
 ## Названия ярлыков на рабочем столе
 
@@ -23,10 +23,11 @@
 ## Что делает локальный тест (`test-local-site.bat`)
 
 1. Синхронизирует `web/frontend/.env.local` через `sync-frontend-env-from-github.bat`.
-2. Переходит в `web/frontend`.
-3. Выполняет production-сборку (`npm run build`).
-4. Запускает локальный просмотр сайта (`npm run preview -- --host --strictPort --port 4173`).
-5. Открывает локальный адрес в Cursor (если доступно), иначе — в браузере.
+2. Проверяет наличие `VITE_API_BASE_URL` в `.env.local`.
+3. Переходит в `web/frontend`.
+4. Выполняет production-сборку (`npm run build`).
+5. Запускает локальный просмотр сайта (`npm run preview -- --host --strictPort --port 4173`).
+6. Открывает локальный адрес в браузере.
 
 Лог записывается в `local-test-last.log`.
 
@@ -35,14 +36,15 @@
 1. Установите GitHub CLI: `gh`.
 2. Один раз выполните авторизацию:
    - `gh auth login`
-3. Убедитесь, что в GitHub repo заполнены именно **Actions Variables** (не Secrets):
+3. Убедитесь, что в GitHub repo заполнены именно **Actions Variables** (не Secrets), если вы используете Firebase-переменные:
    - `VITE_FIREBASE_API_KEY`
    - `VITE_FIREBASE_APP_ID`
    - `VITE_FIREBASE_AUTH_DOMAIN`
    - `VITE_FIREBASE_MESSAGING_SENDER_ID`
    - `VITE_FIREBASE_PROJECT_ID`
    - `VITE_FIREBASE_STORAGE_BUCKET`
-4. После этого `ПТО · 2. Локальный Тест` сам обновляет `.env.local` перед сборкой.
+4. Обязательно проверьте, что `web/frontend/.env.local` содержит `VITE_API_BASE_URL` (например, `http://localhost:8787`).
+5. После этого `ПТО · 2. Локальный Тест` сам обновляет `.env.local` перед сборкой.
 
 ## Что делает безопасная публикация (`deploy-site.bat`)
 
@@ -52,7 +54,7 @@
    - если есть несохраненные изменения, публикация будет остановлена с понятной подсказкой.
 3. Проверяет, что demo-режим выключен (`VITE_FORCE_DEMO=0`).
 4. Собирает фронтенд (`web/frontend`, `npm run build`).
-5. Собирает Firebase Functions (`web/firebase/functions`, `npm run build`).
+5. Проверяет backend-папку (`web/backend`) и зависимости (`npm install`).
 6. Автокоммитит изменения (если они есть).
 7. Просит явное подтверждение `YES` перед отправкой в интернет.
 8. Сохраняет точку отката в `last-stable-commit.txt`.

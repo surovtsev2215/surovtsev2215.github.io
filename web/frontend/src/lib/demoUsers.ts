@@ -1,5 +1,5 @@
 import type { UserRole } from "../types";
-import { formatFullNameForDisplay, hasPatronymic, normalizeFullName } from "./normalizeFullName";
+import { formatFullNameForDisplay, normalizeFullName } from "./normalizeFullName";
 import { syntheticEmailForUid } from "./syntheticUserEmail";
 
 export interface DemoUser {
@@ -106,10 +106,7 @@ export function getDemoAuditEvents(): DemoAuditEvent[] {
 export function createDemoStaffUser(input: { fullName: string; password: string; role: "isolator" | "director" }) {
   const fullName = formatFullNameForDisplay(input.fullName);
   if (!fullName) throw new Error("Введите ФамилияИО.");
-  if (!hasPatronymic(input.fullName)) {
-    throw new Error("Укажите ФамилияИО с отчеством.");
-  }
-  if (input.password.length < 6) throw new Error("Пароль должен быть не короче 6 символов.");
+  if (input.password.length < 4) throw new Error("Пароль должен быть не короче 4 символов.");
   const norm = normalizeFullName(fullName);
   const users = getDemoUsers();
   if (users.some((u) => normalizeFullName(u.fullName) === norm)) {
@@ -144,10 +141,7 @@ export function updateDemoUser(
   if (!uid) throw new Error("Не указан пользователь.");
   const fullName = formatFullNameForDisplay(input.fullName);
   if (!fullName) throw new Error("Введите ФамилияИО.");
-  if (!hasPatronymic(input.fullName)) {
-    throw new Error("Укажите ФамилияИО с отчеством.");
-  }
-  if (input.password.length < 6) throw new Error("Пароль должен быть не короче 6 символов.");
+  if (input.password.length < 4) throw new Error("Пароль должен быть не короче 4 символов.");
   const users = getDemoUsers();
   const idx = users.findIndex((u) => u.uid === uid);
   if (idx < 0) throw new Error("Пользователь не найден.");

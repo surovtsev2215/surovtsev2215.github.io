@@ -100,15 +100,15 @@ if errorlevel 1 (
   goto :eof
 )
 
-call :step "[5/11] Build Firebase Functions"
-cd /d "%ROOT_DIR%\web\firebase\functions" >> "%LOG_FILE%" 2>&1
+call :step "[5/11] Check backend workspace"
+cd /d "%ROOT_DIR%\web\backend" >> "%LOG_FILE%" 2>&1
 if errorlevel 1 (
-  call :fail "Cannot open web/firebase/functions"
+  call :fail "Cannot open web/backend"
   goto :eof
 )
-call npm run build >> "%LOG_FILE%" 2>&1
+call npm install >> "%LOG_FILE%" 2>&1
 if errorlevel 1 (
-  call :fail "Firebase Functions build failed"
+  call :fail "Backend dependency check failed"
   goto :eof
 )
 

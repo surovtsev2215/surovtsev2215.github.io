@@ -3,6 +3,7 @@ import { getAuth } from "firebase/auth";
 import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getFunctions } from "firebase/functions";
+import { isApiConfigured } from "./runtimeConfig";
 
 const env = import.meta.env;
 
@@ -42,7 +43,7 @@ fetch("http://127.0.0.1:7653/ingest/20d63d97-1111-4b46-9651-c2ddf66cae7c", {
 }).catch(() => {});
 // #endregion
 
-if (!isFirebaseConfigured) {
+if (!isFirebaseConfigured && !isApiConfigured) {
   // #region agent log
   fetch("http://127.0.0.1:7653/ingest/20d63d97-1111-4b46-9651-c2ddf66cae7c", {
     method: "POST",
@@ -63,12 +64,12 @@ if (!isFirebaseConfigured) {
   );
 }
 
-const app = initializeApp(firebaseConfig);
+const app = isFirebaseConfigured ? initializeApp(firebaseConfig) : null;
 
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const storage = getStorage(app);
-export const functions = getFunctions(app, "us-central1");
+export const auth = app ? getAuth(app) : (null as unknown as ReturnType<typeof getAuth>);
+export const db = app ? getFirestore(app) : (null as unknown as ReturnType<typeof getFirestore>);
+export const storage = app ? getStorage(app) : (null as unknown as ReturnType<typeof getStorage>);
+export const functions = app ? getFunctions(app, "us-central1") : (null as unknown as ReturnType<typeof getFunctions>);
 
 if (isFirebaseConfigured) {
   enableIndexedDbPersistence(db).catch((error: unknown) => {

@@ -1,5 +1,7 @@
 import type { Report } from "../types";
 import { isFirebaseConfigured, db } from "./firebase";
+import { apiRequest } from "./apiClient";
+import { isApiConfigured } from "./runtimeConfig";
 import { normalizeReport } from "./reportAggregations";
 import {
   addDoc,
@@ -33,6 +35,13 @@ export function saveReport(report: Report) {
 }
 
 export async function createReport(report: Report) {
+  if (isApiConfigured) {
+    await apiRequest<{ report: Report }>("/api/reports", {
+      method: "POST",
+      body: JSON.stringify(report)
+    });
+    return;
+  }
   if (!isFirebaseConfigured) {
     saveReport(report);
     return;
@@ -42,6 +51,14 @@ export async function createReport(report: Report) {
 }
 
 export async function fetchReportById(id: string): Promise<Report | null> {
+  if (isApiConfigured) {
+    try {
+      const { report } = await apiRequest<{ report: Report }>(`/api/reports/${id}`);
+      return normalizeReport(report);
+    } catch {
+      return null;
+    }
+  }
   if (!isFirebaseConfigured) {
     return getReports().find((r) => r.id === id) ?? null;
   }
@@ -55,6 +72,23 @@ export function subscribeReportsByUser(
   callback: (rows: Report[]) => void,
   onError?: (message: string) => void
 ) {
+  if (isApiConfigured) {
+    let disposed = false;
+    const emit = async () => {
+      try {
+        const { reports } = await apiRequest<{ reports: Report[] }>("/api/reports");
+        if (!disposed) callback(reports.filter((r) => r.userId === userId).map((r) => normalizeReport(r)));
+      } catch {
+        if (!disposed) onError?.("Не удалось загрузить отчёты. Проверьте сеть.");
+      }
+    };
+    void emit();
+    const timer = window.setInterval(() => void emit(), 4000);
+    return () => {
+      disposed = true;
+      window.clearInterval(timer);
+    };
+  }
   if (!isFirebaseConfigured) {
     const emit = () =>
       callback(getReports().filter((r) => r.userId === userId));
@@ -89,6 +123,23 @@ export function subscribeAllReports(
   callback: (rows: Report[]) => void,
   onError?: (message: string) => void
 ) {
+  if (isApiConfigured) {
+    let disposed = false;
+    const emit = async () => {
+      try {
+        const { reports } = await apiRequest<{ reports: Report[] }>("/api/reports");
+        if (!disposed) callback(reports.map((r) => normalizeReport(r)));
+      } catch {
+        if (!disposed) onError?.("Не удалось загрузить отчёты. Проверьте сеть.");
+      }
+    };
+    void emit();
+    const timer = window.setInterval(() => void emit(), 4000);
+    return () => {
+      disposed = true;
+      window.clearInterval(timer);
+    };
+  }
   if (!isFirebaseConfigured) {
     const emit = () => callback(getReports());
     emit();

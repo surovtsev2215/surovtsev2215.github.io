@@ -23,6 +23,11 @@ export function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError("");
+    if (password.length < 4) {
+      setLoading(false);
+      setError("Пароль должен быть минимум 4 символа.");
+      return;
+    }
     try {
       await login(fullName.trim(), password);
     } catch (err) {
@@ -68,7 +73,9 @@ export function LoginPage() {
             aria-describedby={error ? "login-error" : undefined}
             required
           />
-          <p className="text-xs text-slate-500 theme-dark:text-slate-400">Можно проверить ввод через иконку глаза.</p>
+          <p className="text-xs text-slate-500 theme-dark:text-slate-400">
+            Пароль: минимум 4 символа. Можно проверить ввод через иконку глаза.
+          </p>
         </div>
         {error && (
           <p

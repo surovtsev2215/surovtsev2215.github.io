@@ -8,6 +8,8 @@ import {
 import { httpsCallable } from "firebase/functions";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db, functions } from "../lib/firebase";
+import { apiRequest, setApiToken } from "../lib/apiClient";
+import { isApiConfigured } from "../lib/runtimeConfig";
 import type { Profile, UserRole } from "../types";
 import { formatFullNameForDisplay } from "../lib/normalizeFullName";
 
@@ -31,6 +33,7 @@ const registerByFullNameFn = httpsCallable<{ fullName: string; password: string 
   functions,
   "registerByFullName"
 );
+const API_PROFILE_KEY = "pto-api-profile";
 
 function userMessageFromLoginError(error: unknown): string {
   const code = typeof error === "object" && error && "code" in error ? String(error.code) : "";
@@ -46,8 +49,7 @@ function userMessageFromLoginError(error: unknown): string {
 function userMessageFromRegisterError(error: unknown): string {
   const code = typeof error === "object" && error && "code" in error ? String(error.code) : "";
   if (code.includes("already-exists")) return "Пользователь с таким ФамилияИО уже существует.";
-  if (code.includes("invalid-argument"))
-    return "Проверьте имя и пароль. Для обычной регистрации требуется ФамилияИО с отчеством.";
+  if (code.includes("invalid-argument")) return "Проверьте имя и пароль. Пароль должен быть минимум 4 символа.";
   if (code.includes("resource-exhausted")) return "Слишком много попыток регистрации. Повторите позже.";
   if (code.includes("unavailable")) return "Сервис регистрации временно недоступен. Проверьте интернет.";
   if (code.includes("deadline-exceeded")) return "Превышено время ожидания регистрации. Попробуйте снова.";
@@ -62,6 +64,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (isApiConfigured) {
+      const bootstrapFromApiSession = async () => {
+        try {
+          const raw = localStorage.getItem(API_PROFILE_KEY);
+          if (raw) {
+            const cached = JSON.parse(raw) as Profile;
+            setProfile(cached);
+            setRole(cached.role);
+          }
+          const { profile: fresh } = await apiRequest<{ profile: Profile }>("/api/auth/me");
+          localStorage.setItem(API_PROFILE_KEY, JSON.stringify(fresh));
+          setProfile(fresh);
+          setRole(fresh.role);
+          setUser({ uid: fresh.uid } as User);
+        } catch {
+          setApiToken("");
+          localStorage.removeItem(API_PROFILE_KEY);
+          setProfile(null);
+          setRole(null);
+          setUser(null);
+        } finally {
+          setLoading(false);
+        }
+      };
+      void bootstrapFromApiSession();
+      return;
+    }
+
     // #region agent log
     fetch("http://127.0.0.1:7653/ingest/20d63d97-1111-4b46-9651-c2ddf66cae7c", {
       method: "POST",
@@ -178,6 +208,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       role,
       loading,
       login: async (fullName, password) => {
+        if (isApiConfigured) {
+          const normalizedDisplayName = formatFullNameForDisplay(fullName);
+          const { token, profile: nextProfile } = await apiRequest<{ token: string; profile: Profile }>(
+            "/api/auth/login",
+            {
+              method: "POST",
+              body: JSON.stringify({ fullName: normalizedDisplayName, password })
+            }
+          );
+          setApiToken(token);
+          localStorage.setItem(API_PROFILE_KEY, JSON.stringify(nextProfile));
+          setProfile(nextProfile);
+          setRole(nextProfile.role);
+          setUser({ uid: nextProfile.uid } as User);
+          return;
+        }
         try {
           const { data } = await loginByFullNameFn({ fullName: formatFullNameForDisplay(fullName), password });
           if (!data?.token) throw new Error("Сервер не вернул токен входа.");
@@ -187,6 +233,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       },
       register: async (fullName, password) => {
+        if (isApiConfigured) {
+          const normalizedDisplayName = formatFullNameForDisplay(fullName);
+          const { token, profile: nextProfile } = await apiRequest<{ token: string; profile: Profile }>(
+            "/api/auth/register",
+            {
+              method: "POST",
+              body: JSON.stringify({ fullName: normalizedDisplayName, password })
+            }
+          );
+          setApiToken(token);
+          localStorage.setItem(API_PROFILE_KEY, JSON.stringify(nextProfile));
+          setProfile(nextProfile);
+          setRole(nextProfile.role);
+          setUser({ uid: nextProfile.uid } as User);
+          return;
+        }
         const normalizedDisplayName = formatFullNameForDisplay(fullName);
         try {
           const { data } = await registerByFullNameFn({ fullName: normalizedDisplayName, password });
@@ -197,6 +259,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       },
       logout: async () => {
+        if (isApiConfigured) {
+          setApiToken("");
+          localStorage.removeItem(API_PROFILE_KEY);
+          setProfile(null);
+          setRole(null);
+          setUser(null);
+          return;
+        }
         await signOut(auth);
       }
     }),
