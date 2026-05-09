@@ -1,9 +1,13 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-// Базовый путь сайта. Для user-pages (`<username>.github.io`) и кастомного домена — "/".
-// Для project-pages подставится через переменную окружения, например "/PTO_Project/".
-const basePath = process.env.VITE_BASE_PATH || "/";
+// Базовый путь сайта:
+// - локально и для кастомного домена: "/"
+// - для GitHub project pages: "/<repo>/"
+const repoName = process.env.GITHUB_REPOSITORY?.split("/")[1] || "";
+const isGithubActions = process.env.GITHUB_ACTIONS === "true";
+const autoGhPagesBase = isGithubActions && repoName ? `/${repoName}/` : "/";
+const basePath = process.env.VITE_BASE_PATH || autoGhPagesBase;
 
 export default defineConfig({
   base: basePath,
