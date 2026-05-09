@@ -1,4 +1,4 @@
-import { Suspense, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, memo, useCallback, useEffect, useMemo, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { ClipboardList, History, Menu, Users } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
@@ -8,7 +8,6 @@ import { Button } from "../ui/button";
 import { Skeleton } from "../ui/skeleton";
 import { buildItrAccess, itrSectionMeta, type ItrPreloadKey, type ItrSection } from "../../lib/itrAccess";
 import { isApiConfigured } from "../../lib/runtimeConfig";
-import { apiRequest } from "../../lib/apiClient";
 import { useReportFeed } from "../../hooks/useReportFeed";
 import { useTaskFeed } from "../../hooks/useTaskFeed";
 
@@ -296,35 +295,37 @@ function ItrBadgeProvider() {
     () => buildItrAccess(profile?.position, profile?.allowedSections),
     [profile?.position, profile?.allowedSections]
   );
-  const warmupDoneRef = useRef(false);
   const rawSection = new URLSearchParams(location.search).get("section");
   const activeSection: ItrSection = access.hasSection(rawSection as ItrSection) ? (rawSection as ItrSection) : "home";
 
   useEffect(() => {
-    for (const section of access.sections) {
+    const warmSections = access.sections.slice(0, 2);
+    for (const section of warmSections) {
       preloadPage(itrSectionMeta[section].preload);
     }
   }, [access.sections.join("|")]);
 
-  useEffect(() => {
-    if (!isApiConfigured || warmupDoneRef.current) return;
-    warmupDoneRef.current = true;
-    void apiRequest("/api/reports").catch(() => undefined);
-    void apiRequest("/api/tasks?scope=assignedToMe").catch(() => undefined);
-  }, [profile?.uid]);
-
   const badges = useMemo<Partial<Record<ItrSection, { count: number; tone: "primary" | "warning" | "danger" }>>>(() => {
     const next: Partial<Record<ItrSection, { count: number; tone: "primary" | "warning" | "danger" }>> = {};
     if (access.hasSection("approvals")) {
-      next.approvals = { count: reports.totals.submittedCount, tone: "primary" };
+      next.approvals = {
+        count: reports.totals.submittedCount,
+        tone: reports.error ? "warning" : "primary"
+      };
     }
     if (access.hasSection("tasks")) {
       const tone: "warning" | "danger" | "primary" =
-        tasks.overdueCount > 0 ? "danger" : tasks.openCount > 0 ? "warning" : "primary";
+        tasks.error
+          ? "warning"
+          : tasks.overdueCount > 0
+            ? "danger"
+            : tasks.openCount > 0
+              ? "warning"
+              : "primary";
       next.tasks = { count: tasks.openCount, tone };
     }
     return next;
-  }, [access, reports.totals.submittedCount, tasks.openCount, tasks.overdueCount]);
+  }, [access, reports.error, reports.totals.submittedCount, tasks.error, tasks.openCount, tasks.overdueCount]);
 
   const selectSection = useCallback((section: ItrSection) => {
     if (section === activeSection) return;
@@ -392,11 +393,17 @@ export function AppLayout() {
 
   return (
     <div className="min-h-screen pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-lg focus:bg-white focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-slate-900"
+      >
+        Перейти к основному содержимому
+      </a>
       <header className="glass sticky top-0 z-20 border-b">
         <div className="mx-auto flex max-w-7xl flex-wrap items-start justify-between gap-2 px-3 py-2.5 sm:flex-nowrap sm:items-center sm:px-5 sm:py-3.5">
           <div className="min-w-0">
             <div className="truncate text-sm font-semibold text-primary theme-dark:text-accent sm:text-base">
-              Система контроля пиздюлей
+              Система контроля изоляции трубопроводов
             </div>
             <div className="mt-0.5 flex items-center gap-1.5 sm:hidden">
               <span
@@ -468,7 +475,7 @@ export function AppLayout() {
 
       <div className={cn("mx-auto grid w-full max-w-7xl gap-3 px-2 py-2 sm:gap-4 sm:px-5 sm:py-4", layoutGridClass)}>
         {isDirector && isApiConfigured ? <ItrBadgeProvider /> : null}
-        <main className="glass rounded-2xl p-2.5 pb-24 shadow-card sm:p-4 md:pb-5 lg:p-5">
+        <main id="main-content" className="glass rounded-2xl p-2.5 pb-24 shadow-card sm:p-4 md:pb-5 lg:p-5">
           <Suspense
             fallback={
               <div className="space-y-3">

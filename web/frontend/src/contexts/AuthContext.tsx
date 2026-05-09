@@ -8,7 +8,7 @@ import {
 import { httpsCallable } from "firebase/functions";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db, functions } from "../lib/firebase";
-import { apiRequest, setApiToken } from "../lib/apiClient";
+import { ApiError, apiRequest, setApiAuthFailureHandler, setApiToken } from "../lib/apiClient";
 import { isApiConfigured } from "../lib/runtimeConfig";
 import type { Profile, UserRole } from "../types";
 import { formatFullNameForDisplay } from "../lib/normalizeFullName";
@@ -65,6 +65,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (isApiConfigured) {
+      setApiAuthFailureHandler(() => {
+        setApiToken("");
+        localStorage.removeItem(API_PROFILE_KEY);
+        setProfile(null);
+        setRole(null);
+        setUser(null);
+      });
       const bootstrapFromApiSession = async () => {
         try {
           const raw = localStorage.getItem(API_PROFILE_KEY);
@@ -89,7 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       };
       void bootstrapFromApiSession();
-      return;
+      return () => setApiAuthFailureHandler(null);
     }
 
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -143,19 +150,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading,
       login: async (fullName, password) => {
         if (isApiConfigured) {
-          const normalizedDisplayName = formatFullNameForDisplay(fullName);
-          const { token, profile: nextProfile } = await apiRequest<{ token: string; profile: Profile }>(
-            "/api/auth/login",
-            {
-              method: "POST",
-              body: JSON.stringify({ fullName: normalizedDisplayName, password })
+          try {
+            const normalizedDisplayName = formatFullNameForDisplay(fullName);
+            const { token, profile: nextProfile } = await apiRequest<{ token: string; profile: Profile }>(
+              "/api/auth/login",
+              {
+                method: "POST",
+                body: JSON.stringify({ fullName: normalizedDisplayName, password })
+              }
+            );
+            setApiToken(token);
+            localStorage.setItem(API_PROFILE_KEY, JSON.stringify(nextProfile));
+            setProfile(nextProfile);
+            setRole(nextProfile.role);
+            setUser({ uid: nextProfile.uid } as User);
+          } catch (error) {
+            if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+              throw new Error("Неверное имя или пароль.");
             }
-          );
-          setApiToken(token);
-          localStorage.setItem(API_PROFILE_KEY, JSON.stringify(nextProfile));
-          setProfile(nextProfile);
-          setRole(nextProfile.role);
-          setUser({ uid: nextProfile.uid } as User);
+            throw new Error(userMessageFromLoginError(error));
+          }
           return;
         }
         try {
@@ -168,19 +182,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
       register: async (fullName, password) => {
         if (isApiConfigured) {
-          const normalizedDisplayName = formatFullNameForDisplay(fullName);
-          const { token, profile: nextProfile } = await apiRequest<{ token: string; profile: Profile }>(
-            "/api/auth/register",
-            {
-              method: "POST",
-              body: JSON.stringify({ fullName: normalizedDisplayName, password })
-            }
-          );
-          setApiToken(token);
-          localStorage.setItem(API_PROFILE_KEY, JSON.stringify(nextProfile));
-          setProfile(nextProfile);
-          setRole(nextProfile.role);
-          setUser({ uid: nextProfile.uid } as User);
+          try {
+            const normalizedDisplayName = formatFullNameForDisplay(fullName);
+            const { token, profile: nextProfile } = await apiRequest<{ token: string; profile: Profile }>(
+              "/api/auth/register",
+              {
+                method: "POST",
+                body: JSON.stringify({ fullName: normalizedDisplayName, password })
+              }
+            );
+            setApiToken(token);
+            localStorage.setItem(API_PROFILE_KEY, JSON.stringify(nextProfile));
+            setProfile(nextProfile);
+            setRole(nextProfile.role);
+            setUser({ uid: nextProfile.uid } as User);
+          } catch (error) {
+            throw new Error(userMessageFromRegisterError(error));
+          }
           return;
         }
         const normalizedDisplayName = formatFullNameForDisplay(fullName);

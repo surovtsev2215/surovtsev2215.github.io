@@ -14,6 +14,7 @@ import type { Report } from "../types";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
 import { Input } from "../components/ui/input";
+import { EmptyState, ErrorState, LoadingState } from "../components/feedback/AsyncState";
 
 export function HistoryPage() {
   const { profile } = useAuth();
@@ -25,6 +26,8 @@ export function HistoryPage() {
   const [toDate, setToDate] = useState("");
   const [sortBy, setSortBy] = useState<"date" | "length">("date");
   const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const deferredSearch = useDeferredValue(search);
 
   const filteredRows = useMemo(() => {
@@ -74,10 +77,20 @@ export function HistoryPage() {
 
   useEffect(() => {
     if (!profile?.uid) return;
+    setLoading(true);
+    setError(null);
     const unsub = subscribeReportsByUser(
       profile.uid,
-      setRows,
-      (msg) => toast.error(msg)
+      (next) => {
+        setRows(next);
+        setLoading(false);
+        setError(null);
+      },
+      (msg) => {
+        toast.error(msg);
+        setError(msg);
+        setLoading(false);
+      }
     );
     return () => unsub?.();
   }, [profile?.uid, listVersion]);
@@ -165,10 +178,19 @@ export function HistoryPage() {
           </span>
         </div>
       </div>
-      {!rows.length ? (
-        <Card className="surface-floating">
-          <CardContent className="space-y-3 p-5 text-slate-600 theme-dark:text-slate-300">
-            <p>Пока нет сохраненных отчетов.</p>
+      {loading ? (
+        <LoadingState label="Загружаем историю отчётов..." />
+      ) : error ? (
+        <ErrorState
+          message={error}
+          onRetry={() => setListVersion((v) => v + 1)}
+          retryLabel="Обновить историю"
+        />
+      ) : !rows.length ? (
+        <EmptyState
+          title="Пока нет сохранённых отчётов."
+          description="Создайте первый отчёт или повторите загрузку списка."
+          actions={
             <div className="flex flex-wrap gap-2">
               <Button type="button" size="sm" onClick={() => navigate("/form")}>
                 Создать первый отчёт
@@ -177,19 +199,19 @@ export function HistoryPage() {
                 Проверить снова
               </Button>
             </div>
-          </CardContent>
-        </Card>
+          }
+        />
       ) : !filteredRows.length ? (
-        <Card className="surface-floating">
-          <CardContent className="space-y-3 p-5 text-slate-600 theme-dark:text-slate-300">
-            <p>По заданным фильтрам ничего не найдено.</p>
+        <EmptyState
+          title="По заданным фильтрам ничего не найдено."
+          actions={
             <div className="flex flex-wrap gap-2">
               <Button type="button" variant="secondary" size="sm" onClick={resetFilters}>
                 Сбросить фильтры
               </Button>
             </div>
-          </CardContent>
-        </Card>
+          }
+        />
       ) : (
         <div className="space-y-2 animate-in-up">
           {filteredRows.map((r) => {

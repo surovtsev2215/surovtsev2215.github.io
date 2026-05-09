@@ -98,7 +98,8 @@ function RoutePrefetcher() {
       if (role === "director") {
         void loadDirectorWorkspacePage();
         const access = buildItrAccess(profile?.position, profile?.allowedSections);
-        for (const section of access.sections) {
+        // Keep startup light: prefetch only first critical sections.
+        for (const section of access.sections.slice(0, 2)) {
           if (section === "home") void loadDirectorHomePage();
           if (section === "reports") void loadDirectorReportsPage();
           if (section === "team") void loadDirectorTeamPage();

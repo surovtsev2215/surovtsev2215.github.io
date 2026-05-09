@@ -5,6 +5,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { PasswordInput } from "../components/ui/password-input";
 import { Label } from "../components/ui/label";
+import { validateFullNameInput, validatePasswordInput } from "../lib/authValidation";
 
 export function LoginPage() {
   const { user, profile, role, login } = useAuth();
@@ -23,9 +24,16 @@ export function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError("");
-    if (password.length < 2) {
+    const fullNameError = validateFullNameInput(fullName);
+    if (fullNameError) {
       setLoading(false);
-      setError("Пароль должен быть минимум 2 символа.");
+      setError(fullNameError);
+      return;
+    }
+    const passwordError = validatePasswordInput(password);
+    if (passwordError) {
+      setLoading(false);
+      setError(passwordError);
       return;
     }
     try {

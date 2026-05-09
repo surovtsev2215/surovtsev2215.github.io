@@ -5,6 +5,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { PasswordInput } from "../components/ui/password-input";
 import { Label } from "../components/ui/label";
+import { validateFullNameInput, validatePasswordInput } from "../lib/authValidation";
 
 export function RegisterPage() {
   const { user, profile, role, register } = useAuth();
@@ -22,16 +23,18 @@ export function RegisterPage() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
+    const fullNameError = validateFullNameInput(fullName);
+    if (fullNameError) {
+      setError(fullNameError);
+      return;
+    }
     if (password !== confirmPassword) {
       setError("Пароли не совпадают.");
       return;
     }
-    if (!password.trim()) {
-      setError("Введите пароль.");
-      return;
-    }
-    if (password.length < 2) {
-      setError("Пароль должен быть минимум 2 символа.");
+    const passwordError = validatePasswordInput(password);
+    if (passwordError) {
+      setError(passwordError);
       return;
     }
     setLoading(true);

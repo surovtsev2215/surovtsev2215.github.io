@@ -41,6 +41,8 @@ export interface ReportFeed {
   rows: Report[];
   rowsAll: Report[];
   loading: boolean;
+  error: string | null;
+  lastUpdatedAt: number | null;
   totals: ReportFeedAggregates;
   refresh: () => void;
 }
@@ -53,17 +55,23 @@ export function useReportFeed(
   const { range } = useItrPeriod();
   const [rowsAll, setRowsAll] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
   const [version, setVersion] = useState(0);
   const deferredSearch = useDeferredValue(filters.search ?? "");
 
   useEffect(() => {
     setLoading(true);
+    setError(null);
     const unsub = subscribeAllReports(
       (next) => {
         setRowsAll(next);
+        setError(null);
         setLoading(false);
+        setLastUpdatedAt(Date.now());
       },
       (message) => {
+        setError(message);
         toast.error(message);
         setLoading(false);
       },
@@ -187,6 +195,8 @@ export function useReportFeed(
     rows,
     rowsAll,
     loading,
+    error,
+    lastUpdatedAt,
     totals,
     refresh: () => setVersion((v) => v + 1)
   };

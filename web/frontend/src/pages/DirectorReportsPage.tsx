@@ -6,6 +6,7 @@ import { Card, CardContent } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
 import { Skeleton } from "../components/ui/skeleton";
+import { EmptyState, ErrorState } from "../components/feedback/AsyncState";
 import { useReportFeed } from "../hooks/useReportFeed";
 import { useItrPeriod } from "../hooks/useItrPeriod";
 import { useUsersDirectory } from "../hooks/useUsersDirectory";
@@ -196,10 +197,12 @@ export function DirectorReportsPage() {
           <Skeleton className="h-20 w-full rounded-xl" />
           <Skeleton className="h-20 w-full rounded-xl" />
         </div>
+      ) : reports.error ? (
+        <ErrorState message={reports.error} onRetry={reports.refresh} retryLabel="Повторить загрузку" />
       ) : !rows.length ? (
-        <Card className="soft-ring surface-floating">
-          <CardContent className="space-y-2 p-4 text-sm">
-            <p className="text-slate-600 theme-dark:text-slate-300">По текущим фильтрам отчётов не найдено.</p>
+        <EmptyState
+          title="По текущим фильтрам отчётов не найдено."
+          actions={
             <div className="flex flex-wrap gap-2">
               <Button type="button" variant="secondary" size="sm" onClick={() => setSearch("")}>
                 Сбросить поиск
@@ -216,8 +219,8 @@ export function DirectorReportsPage() {
                 Очистить фильтры
               </Button>
             </div>
-          </CardContent>
-        </Card>
+          }
+        />
       ) : (
         <div className="space-y-2">
           {rows.map((r) => {

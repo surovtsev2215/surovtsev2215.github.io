@@ -7,9 +7,11 @@ import type { Task } from "../types";
 export interface TaskFeed {
   tasks: Task[];
   loading: boolean;
+  error: string | null;
   openCount: number;
   myOpenCount: number;
   overdueCount: number;
+  lastUpdatedAt: number | null;
   refresh: () => void;
 }
 
@@ -27,22 +29,29 @@ export function useTaskFeed(
   const autoRefresh = options.autoRefresh ?? true;
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
   const [version, setVersion] = useState(0);
 
   useEffect(() => {
     if (!isApiConfigured) {
       setTasks([]);
       setLoading(false);
+      setError(null);
       return;
     }
     setLoading(true);
+    setError(null);
     const unsubscribe = subscribeTasks(
       scope,
       (next) => {
         setTasks(next);
+        setError(null);
         setLoading(false);
+        setLastUpdatedAt(Date.now());
       },
       (message) => {
+        setError(message);
         toast.error(message);
         setLoading(false);
       },
@@ -67,9 +76,11 @@ export function useTaskFeed(
   return {
     tasks,
     loading,
+    error,
     openCount,
     myOpenCount,
     overdueCount,
+    lastUpdatedAt,
     refresh: () => setVersion((v) => v + 1)
   };
 }

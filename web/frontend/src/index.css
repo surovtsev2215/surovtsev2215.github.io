@@ -159,6 +159,16 @@ button {
   }
 }
 
+@media (max-width: 767px) {
+  body::before {
+    opacity: 0.22;
+  }
+
+  .glass {
+    backdrop-filter: blur(6px);
+  }
+}
+
 .theme-dark body {
   @apply bg-slate-950 text-slate-100;
   background-image:
