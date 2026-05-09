@@ -1,5 +1,5 @@
 ================================================== 
-Safe deploy started: 09.05.2026 11:29:44,86 
+Safe deploy started: 09.05.2026 11:31:34,67 
 Root: C:\Users\Surovcev\PTO_Project 
 Dry run: 0 
 ================================================== 
@@ -58,10 +58,10 @@ computing gzip size...
 [2mdist/[22m[36massets/jspdf.es.min-Tyhlo7Ll.js            [39m[1m[2m357.91 kB[22m[1m[22m[2m │ gzip: 118.09 kB[22m
 [2mdist/[22m[36massets/vendor-firebase-data-DR4FQBSM.js    [39m[1m[2m412.63 kB[22m[1m[22m[2m │ gzip: 104.12 kB[22m
 [2mdist/[22m[36massets/xlsx-D_0l8YDs.js                    [39m[1m[2m429.03 kB[22m[1m[22m[2m │ gzip: 143.08 kB[22m
-[32m✓ built in 3.46s[39m
+[32m✓ built in 3.45s[39m
 [5/11] Check backend workspace 
 
-up to date, audited 87 packages in 1s
+up to date, audited 87 packages in 650ms
 
 17 packages are looking for funding
   run `npm fund` for details
@@ -69,6 +69,6 @@ up to date, audited 87 packages in 1s
 found 0 vulnerabilities
 [6/11] Return to project root 
 [7/11] Check pending changes 
-Changes count: 4 
+Changes count: 1 
 Demo flag: unknown 
 [8/11] Auto-commit prepared changes 
