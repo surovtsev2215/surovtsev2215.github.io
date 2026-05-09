@@ -8,7 +8,6 @@ import { buildItrAccess, type ItrSection } from "./lib/itrAccess";
 import type { UserRole } from "./types";
 
 const loadLoginPage = () => import("./pages/LoginPage");
-const loadRegisterPage = () => import("./pages/RegisterPage");
 const loadFormPage = () => import("./pages/FormPage");
 const loadHistoryPage = () => import("./pages/HistoryPage");
 const loadAdminUsersPage = () => import("./pages/AdminUsersPage");
@@ -23,7 +22,6 @@ const loadDirectorProfilePage = () => import("./pages/DirectorProfilePage");
 const loadReportDetailPage = () => import("./pages/ReportDetailPage");
 
 const LoginPage = lazy(() => loadLoginPage().then((m) => ({ default: m.LoginPage })));
-const RegisterPage = lazy(() => loadRegisterPage().then((m) => ({ default: m.RegisterPage })));
 const FormPage = lazy(() => loadFormPage().then((m) => ({ default: m.FormPage })));
 const HistoryPage = lazy(() => loadHistoryPage().then((m) => ({ default: m.HistoryPage })));
 const AdminUsersPage = lazy(() =>
@@ -89,7 +87,6 @@ function RoutePrefetcher() {
   useEffect(() => {
     if (!user && !profile) return;
     const run = () => {
-      void loadRegisterPage();
       void loadReportDetailPage();
       if (role === "admin") {
         void loadAdminUsersPage();
@@ -133,7 +130,7 @@ export default function App() {
       <Suspense fallback={<AuthLoadingSkeleton />}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/register" element={<Navigate to="/login" replace />} />
 
           <Route element={<ProtectedRoute allowedRoles={["isolator"]} />}>
             <Route element={<AppLayout />}>

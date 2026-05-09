@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -9,7 +9,6 @@ import { validateFullNameInput, validatePasswordInput } from "../lib/authValidat
 
 export function LoginPage() {
   const { user, profile, role, login } = useAuth();
-  const navigate = useNavigate();
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -100,11 +99,8 @@ export function LoginPage() {
         <Button type="submit" className="w-full" disabled={loading}>
           {loading ? "Вход..." : "Войти"}
         </Button>
-        <Button type="button" variant="secondary" className="w-full" onClick={() => navigate("/register")}>
-          Зарегистрироваться
-        </Button>
         <p className="text-center text-xs text-slate-500 theme-dark:text-slate-400">
-          Нет аккаунта? Откройте регистрацию и создайте пользователя.
+          Если нужен доступ, обратитесь к администратору.
         </p>
       </form>
     </div>
