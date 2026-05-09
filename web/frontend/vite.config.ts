@@ -6,7 +6,9 @@ import react from "@vitejs/plugin-react";
 // - для GitHub project pages: "/<repo>/"
 const repoName = process.env.GITHUB_REPOSITORY?.split("/")[1] || "";
 const isGithubActions = process.env.GITHUB_ACTIONS === "true";
-const autoGhPagesBase = isGithubActions && repoName ? `/${repoName}/` : "/";
+const isUserPagesRepo = repoName.toLowerCase().endsWith(".github.io");
+const autoGhPagesBase =
+  isGithubActions && repoName ? (isUserPagesRepo ? "/" : `/${repoName}/`) : "/";
 const basePath = process.env.VITE_BASE_PATH || autoGhPagesBase;
 
 export default defineConfig({
