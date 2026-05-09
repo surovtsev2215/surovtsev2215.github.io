@@ -26,6 +26,56 @@
   </head>
   <body class="bg-slate-50">
     <div id="root"></div>
+    <script>
+      // Safari/mobile recovery: if app bundle fails to mount, show fallback and reload.
+      (function () {
+        var mounted = false;
+        var root = document.getElementById("root");
+        var reloadKey = "pto-hard-reload-attempts";
+        var maxReloads = 2;
+        var attempts = Number(sessionStorage.getItem(reloadKey) || "0");
+
+        var markMounted = function () {
+          if (root && root.children && root.children.length > 0) {
+            mounted = true;
+          }
+        };
+
+        setTimeout(function () {
+          markMounted();
+          if (mounted) {
+            sessionStorage.removeItem(reloadKey);
+            return;
+          }
+
+          if (attempts < maxReloads) {
+            sessionStorage.setItem(reloadKey, String(attempts + 1));
+            var url = new URL(window.location.href);
+            url.searchParams.set("_cb", String(Date.now()));
+            window.location.replace(url.toString());
+            return;
+          }
+
+          if (!root) return;
+          root.innerHTML =
+            '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;">' +
+            '<div style="max-width:420px;width:100%;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;">' +
+            '<h2 style="margin:0 0 8px 0;font-size:18px;">Не удалось загрузить сайт</h2>' +
+            '<p style="margin:0 0 12px 0;color:#475569;font-size:14px;">Нажмите кнопку ниже для полного обновления страницы.</p>' +
+            '<button id="pto-hard-reload" style="width:100%;border:0;border-radius:10px;padding:10px 12px;background:#4f46e5;color:#fff;font-size:14px;">Полное обновление</button>' +
+            "</div></div>";
+          var btn = document.getElementById("pto-hard-reload");
+          if (btn) {
+            btn.addEventListener("click", function () {
+              sessionStorage.removeItem(reloadKey);
+              var cleanUrl = new URL(window.location.href);
+              cleanUrl.searchParams.set("_cb", String(Date.now()));
+              window.location.replace(cleanUrl.toString());
+            });
+          }
+        }, 3500);
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
