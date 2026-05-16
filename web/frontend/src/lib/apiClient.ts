@@ -2,6 +2,9 @@ import { buildApiUrl, isApiConfigured } from "./runtimeConfig";
 
 const TOKEN_KEY = "pto-api-token";
 const REQUEST_TIMEOUT_MS = 12000;
+const REPORT_POST_TIMEOUT_MS = 60000;
+
+export type ApiRequestInit = RequestInit & { timeoutMs?: number };
 const inFlightGetRequests = new Map<string, Promise<unknown>>();
 
 type AuthFailureHandler = () => void;
@@ -44,30 +47,34 @@ function mergeSignals(controller: AbortController, signal?: AbortSignal | null):
   return () => signal.removeEventListener("abort", onAbort);
 }
 
-export async function apiRequest<T>(pathname: string, init?: RequestInit): Promise<T> {
+export async function apiRequest<T>(pathname: string, init?: ApiRequestInit): Promise<T> {
   if (!isApiConfigured) {
     throw new Error("API режим не настроен. Укажите VITE_API_BASE_URL.");
   }
 
   const token = getApiToken();
   const method = (init?.method || "GET").toUpperCase();
+  const { timeoutMs: timeoutOverride, ...fetchInit } = init ?? {};
   const requestKey = `${method}|${buildApiUrl(pathname)}|${token}`;
-  if (method === "GET" && !init?.body) {
+  if (method === "GET" && !fetchInit.body) {
     const existing = inFlightGetRequests.get(requestKey);
     if (existing) return existing as Promise<T>;
   }
 
-  const headers = new Headers(init?.headers || {});
-  if (!headers.has("Content-Type") && init?.body) headers.set("Content-Type", "application/json");
+  const headers = new Headers(fetchInit.headers || {});
+  if (!headers.has("Content-Type") && fetchInit.body) headers.set("Content-Type", "application/json");
   if (token) headers.set("Authorization", `Bearer ${token}`);
+  const timeoutMs =
+    timeoutOverride ??
+    (method === "POST" && pathname.startsWith("/api/reports") ? REPORT_POST_TIMEOUT_MS : REQUEST_TIMEOUT_MS);
 
   const doRequest = async () => {
     const controller = new AbortController();
-    const cleanupSignal = mergeSignals(controller, init?.signal);
-    const timeoutId = window.setTimeout(() => controller.abort(new Error("timeout")), REQUEST_TIMEOUT_MS);
+    const cleanupSignal = mergeSignals(controller, fetchInit.signal);
+    const timeoutId = window.setTimeout(() => controller.abort(new Error("timeout")), timeoutMs);
 
     try {
-      const response = await fetch(buildApiUrl(pathname), { ...init, headers, signal: controller.signal });
+      const response = await fetch(buildApiUrl(pathname), { ...fetchInit, headers, signal: controller.signal });
       if (response.status === 204) return undefined as T;
 
       let data: unknown = null;
@@ -107,7 +114,7 @@ export async function apiRequest<T>(pathname: string, init?: RequestInit): Promi
   };
 
   const requestPromise = doRequest();
-  if (method === "GET" && !init?.body) {
+  if (method === "GET" && !fetchInit.body) {
     inFlightGetRequests.set(requestKey, requestPromise as Promise<unknown>);
     try {
       return await requestPromise;

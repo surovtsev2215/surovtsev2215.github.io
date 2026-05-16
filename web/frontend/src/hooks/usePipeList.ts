@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { makePhotoPreview, revokePhotoPreview } from "../lib/photoUpload";
 
 export interface PipeDraft {
   localId: string;
@@ -40,23 +41,41 @@ export function usePipeList(options?: { defaultJointsCount?: number; maxPhotosPe
   function removePipe(localId: string) {
     setPipes((prev) => {
       const removed = prev.find((p) => p.localId === localId);
-      if (removed) removed.photos.forEach((ph) => URL.revokeObjectURL(ph.preview));
+      if (removed) removed.photos.forEach((ph) => revokePhotoPreview(ph.preview));
       return prev.filter((p) => p.localId !== localId);
     });
   }
 
-  function addPhotos(localId: string, files: FileList | null) {
-    if (!files) return;
+  async function addPhotos(localId: string, files: FileList | null): Promise<number> {
+    if (!files?.length) return 0;
+
+    let room = 0;
+    setPipes((prev) => {
+      const pipe = prev.find((p) => p.localId === localId);
+      room = pipe ? Math.max(0, maxPhotosPerPipe - pipe.photos.length) : 0;
+      return prev;
+    });
+    if (room <= 0) return 0;
+
+    const fileArr = Array.from(files).slice(0, room);
+    const newItems: { file: File; preview: string }[] = [];
+    for (const file of fileArr) {
+      try {
+        const preview = await makePhotoPreview(file);
+        newItems.push({ file, preview });
+      } catch {
+        /* skip broken file */
+      }
+    }
+    if (!newItems.length) return 0;
+
     setPipes((prev) =>
       prev.map((p) => {
         if (p.localId !== localId) return p;
-        const room = Math.max(0, maxPhotosPerPipe - p.photos.length);
-        const next = Array.from(files)
-          .slice(0, room)
-          .map((file) => ({ file, preview: URL.createObjectURL(file) }));
-        return { ...p, photos: [...p.photos, ...next].slice(0, maxPhotosPerPipe) };
+        return { ...p, photos: [...p.photos, ...newItems].slice(0, maxPhotosPerPipe) };
       })
     );
+    return newItems.length;
   }
 
   function removePhoto(localId: string, photoIdx: number) {
@@ -65,7 +84,7 @@ export function usePipeList(options?: { defaultJointsCount?: number; maxPhotosPe
         if (p.localId !== localId) return p;
         const next = [...p.photos];
         const removed = next.splice(photoIdx, 1)[0];
-        if (removed) URL.revokeObjectURL(removed.preview);
+        if (removed) revokePhotoPreview(removed.preview);
         return { ...p, photos: next };
       })
     );

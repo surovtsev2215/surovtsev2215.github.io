@@ -33,6 +33,20 @@ function blobToDataUrl(blob: Blob): Promise<string> {
   });
 }
 
+/** JPEG data URL for form preview (HEIC and other formats supported via canvas). */
+export async function makePhotoPreview(file: File): Promise<string> {
+  const blob = await compressImage(file, 1024);
+  return blobToDataUrl(blob);
+}
+
+export function revokePhotoPreview(preview: string) {
+  if (preview.startsWith("blob:")) URL.revokeObjectURL(preview);
+}
+
+export function resetPhotoStorageCache() {
+  photoStorageRemote = null;
+}
+
 export async function isRemotePhotoStorageAvailable(): Promise<boolean> {
   if (!isApiConfigured) return false;
   if (photoStorageRemote != null) return photoStorageRemote;
@@ -102,7 +116,20 @@ export async function uploadReportPhotos(
 
   for (let i = 0; i < files.length; i += 1) {
     try {
-      const url = useRemote ? await uploadOneToApi(files[i]) : await uploadOneLocal(files[i]);
+      let url: string;
+      if (useRemote) {
+        try {
+          url = await uploadOneToApi(files[i]);
+        } catch (apiErr) {
+          resetPhotoStorageCache();
+          url = await uploadOneLocal(files[i]);
+          if (apiErr instanceof Error && apiErr.message) {
+            console.warn("[ПТО] Облачная загрузка недоступна, фото в отчёте как base64:", apiErr.message);
+          }
+        }
+      } else {
+        url = await uploadOneLocal(files[i]);
+      }
       out.push(url);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "ошибка";

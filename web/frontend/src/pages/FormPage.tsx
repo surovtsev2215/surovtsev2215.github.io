@@ -4,12 +4,11 @@ import { useAuth } from "../contexts/AuthContext";
 import { createReport, subscribeReportsByUser } from "../lib/reportStore";
 import { toast } from "sonner";
 import type { PipeEntry, Report, ShiftWorkType } from "../types";
-import { uploadReportPhotos } from "../lib/photoUpload";
+import { makePhotoPreview, revokePhotoPreview, uploadReportPhotos } from "../lib/photoUpload";
 import { syntheticEmailForUid } from "../lib/syntheticUserEmail";
 import {
   ClipboardList,
   Clock3,
-  ImagePlus,
   Plus,
   Sparkles,
   Trash2,
@@ -294,30 +293,45 @@ export function FormPage() {
     extraEquipmentPipes
   ]);
 
-  useEffect(() => {
-    return () => {
-      shiftPhotos.forEach((ph) => URL.revokeObjectURL(ph.preview));
-      shiftPipes.forEach((p) => p.photos.forEach((ph) => URL.revokeObjectURL(ph.preview)));
-      pipelinePipes.forEach((p) => p.photos.forEach((ph) => URL.revokeObjectURL(ph.preview)));
-      equipmentPipes.forEach((p) => p.photos.forEach((ph) => URL.revokeObjectURL(ph.preview)));
-      extraEquipmentPipes.forEach((p) => p.photos.forEach((ph) => URL.revokeObjectURL(ph.preview)));
-    };
-  }, [shiftPhotos, shiftPipes, pipelinePipes, equipmentPipes, extraEquipmentPipes]);
+  async function handlePipePhotosAdd(
+    addFn: (localId: string, files: FileList | null) => Promise<number>,
+    localId: string,
+    files: FileList | null
+  ) {
+    const added = await addFn(localId, files);
+    if (added > 0) {
+      toast.success(`Фото добавлено (${added})`);
+    } else if (files?.length) {
+      toast.error("Не удалось открыть фото. Попробуйте JPEG или сделайте снимок с камеры.");
+    }
+  }
 
-  function addShiftPhotos(files: FileList | null) {
-    if (!files) return;
+  async function addShiftPhotos(files: FileList | null) {
+    if (!files?.length) return;
     const room = Math.max(0, MAX_PHOTOS_PER_PIPE - shiftPhotos.length);
-    const next = Array.from(files)
-      .slice(0, room)
-      .map((file) => ({ file, preview: URL.createObjectURL(file) }));
-    setShiftPhotos((prev) => [...prev, ...next].slice(0, MAX_PHOTOS_PER_PIPE));
+    const fileArr = Array.from(files).slice(0, room);
+    const newItems: { file: File; preview: string }[] = [];
+    for (const file of fileArr) {
+      try {
+        const preview = await makePhotoPreview(file);
+        newItems.push({ file, preview });
+      } catch {
+        /* skip */
+      }
+    }
+    if (!newItems.length) {
+      toast.error("Не удалось открыть фото. Попробуйте JPEG или сделайте снимок с камеры.");
+      return;
+    }
+    setShiftPhotos((prev) => [...prev, ...newItems].slice(0, MAX_PHOTOS_PER_PIPE));
+    toast.success(`Фото добавлено (${newItems.length})`);
   }
 
   function removeShiftPhoto(photoIdx: number) {
     setShiftPhotos((prev) => {
       const next = [...prev];
       const removed = next.splice(photoIdx, 1)[0];
-      if (removed) URL.revokeObjectURL(removed.preview);
+      if (removed) revokePhotoPreview(removed.preview);
       return next;
     });
   }
@@ -492,11 +506,6 @@ export function FormPage() {
       toast.loading("Сохранение отчёта…", { id: "submit-report" });
       await createReport(payload);
       toast.success(totalPhotos > 0 ? `Отчёт сохранён · фото: ${totalPhotos}` : "Отчёт сохранён", { id: "submit-report" });
-      shiftPhotos.forEach((ph) => URL.revokeObjectURL(ph.preview));
-      shiftPipes.forEach((p) => p.photos.forEach((ph) => URL.revokeObjectURL(ph.preview)));
-      pipelinePipes.forEach((p) => p.photos.forEach((ph) => URL.revokeObjectURL(ph.preview)));
-      equipmentPipes.forEach((p) => p.photos.forEach((ph) => URL.revokeObjectURL(ph.preview)));
-      extraEquipmentPipes.forEach((p) => p.photos.forEach((ph) => URL.revokeObjectURL(ph.preview)));
       setShiftPipes([]);
       setPipelinePipes([]);
       setEquipmentPipes([]);
@@ -507,8 +516,9 @@ export function FormPage() {
       setShiftPhotos([]);
       setShiftWorkPipes([]);
       localStorage.removeItem(DRAFT_KEY);
-    } catch {
-      toast.error("Не удалось сохранить отчёт");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Не удалось сохранить отчёт";
+      toast.error(msg, { id: "submit-report" });
     } finally {
       setSubmitting(false);
     }
@@ -521,11 +531,11 @@ export function FormPage() {
     setShiftValue(1);
     setIsolatorWorkDescription("");
     setShiftWorkPipes([]);
-    shiftPhotos.forEach((ph) => URL.revokeObjectURL(ph.preview));
-    shiftPipes.forEach((p) => p.photos.forEach((ph) => URL.revokeObjectURL(ph.preview)));
-    pipelinePipes.forEach((p) => p.photos.forEach((ph) => URL.revokeObjectURL(ph.preview)));
-    equipmentPipes.forEach((p) => p.photos.forEach((ph) => URL.revokeObjectURL(ph.preview)));
-    extraEquipmentPipes.forEach((p) => p.photos.forEach((ph) => URL.revokeObjectURL(ph.preview)));
+    shiftPhotos.forEach((ph) => revokePhotoPreview(ph.preview));
+    shiftPipes.forEach((p) => p.photos.forEach((ph) => revokePhotoPreview(ph.preview)));
+    pipelinePipes.forEach((p) => p.photos.forEach((ph) => revokePhotoPreview(ph.preview)));
+    equipmentPipes.forEach((p) => p.photos.forEach((ph) => revokePhotoPreview(ph.preview)));
+    extraEquipmentPipes.forEach((p) => p.photos.forEach((ph) => revokePhotoPreview(ph.preview)));
     setShiftPipes([]);
     setPipelinePipes([]);
     setEquipmentPipes([]);
@@ -612,40 +622,15 @@ export function FormPage() {
               onChange={(e) => setIsolatorWorkDescription(e.target.value)}
             />
           </div>
-          <div className="surface-muted soft-ring border border-dashed border-slate-300 p-3 theme-dark:border-slate-600">
-            <Label htmlFor="shift-work-photos" className="mb-2 block">
-              Фото работы изолировщика (до {MAX_PHOTOS_PER_PIPE})
-            </Label>
-            <Input
-              id="shift-work-photos"
-              type="file"
-              accept="image/*"
-              multiple
-              capture="environment"
-              className="cursor-pointer border-dashed py-2"
-              onChange={(e) => {
-                addShiftPhotos(e.target.files);
-                e.target.value = "";
-              }}
-            />
-            {!!shiftPhotos.length && (
-              <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
-                {shiftPhotos.map((ph, idx) => (
-                  <div key={idx} className="relative">
-                    <img src={ph.preview} alt={`Фото работы изолировщика ${idx + 1}`} loading="lazy" decoding="async" className="h-24 w-full rounded-lg object-cover" />
-                    <button
-                      type="button"
-                      className="absolute right-1 top-1 rounded bg-black/60 px-2 py-1 text-xs text-white"
-                      onClick={() => removeShiftPhoto(idx)}
-                      aria-label="Удалить фото"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <PhotoAttachField
+            id="shift-work-photos"
+            label="Фото работы изолировщика"
+            hint="Фото сохранятся вместе с отчётом за смену."
+            maxPhotos={MAX_PHOTOS_PER_PIPE}
+            photos={shiftPhotos}
+            onAdd={addShiftPhotos}
+            onRemove={removeShiftPhoto}
+          />
           <div className="surface-floating p-3">
             <div className="mb-2 text-sm font-semibold text-slate-700 theme-dark:text-slate-100">
               Трубы для фиксации смены (фольма-ткань)
@@ -746,43 +731,14 @@ export function FormPage() {
                         </div>
                       </div>
 
-                      <div className="mt-3 surface-muted soft-ring border border-dashed border-slate-300 p-3 theme-dark:border-slate-600">
-                        <Label htmlFor={photosId} className="mb-2 block">
-                          <span className="inline-flex items-center gap-1">
-                            <ImagePlus className="h-4 w-4" aria-hidden />
-                            Фотоотчёт по трубе {p.siteName.trim() || "—"} (до {MAX_PHOTOS_PER_PIPE})
-                          </span>
-                        </Label>
-                        <Input
-                          id={photosId}
-                          type="file"
-                          accept="image/*"
-                          multiple
-                          capture="environment"
-                          className="cursor-pointer border-dashed py-2"
-                          onChange={(e) => {
-                            addShiftPipePhotos(p.localId, e.target.files);
-                            e.target.value = "";
-                          }}
-                        />
-                        {!!p.photos.length && (
-                          <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
-                            {p.photos.map((ph, photoIdx) => (
-                              <div key={photoIdx} className="relative">
-                                <img src={ph.preview} alt={`Фото трубы ${idx + 1} #${photoIdx + 1}`} loading="lazy" decoding="async" className="h-24 w-full rounded-lg object-cover" />
-                                <button
-                                  type="button"
-                                  className="absolute right-1 top-1 rounded bg-black/60 px-2 py-1 text-xs text-white"
-                                  onClick={() => removeShiftPipePhoto(p.localId, photoIdx)}
-                                  aria-label="Удалить фото"
-                                >
-                                  ×
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                      <PhotoAttachField
+                        id={photosId}
+                        label={`Фотоотчёт ${p.siteName.trim() || "—"}`}
+                        maxPhotos={MAX_PHOTOS_PER_PIPE}
+                        photos={p.photos}
+                        onAdd={(files) => handlePipePhotosAdd(addShiftPipePhotos, p.localId, files)}
+                        onRemove={(photoIdx) => removeShiftPipePhoto(p.localId, photoIdx)}
+                      />
 
                       <div className="mt-3 space-y-1">
                         <Label htmlFor={`shift-pipe-${p.localId}-comments`}>Замечания / комментарии</Label>
@@ -949,43 +905,14 @@ export function FormPage() {
                   </div>
                 </div>
 
-                <div className="mt-3 surface-muted soft-ring border border-dashed border-slate-300 p-3 theme-dark:border-slate-600">
-                  <Label htmlFor={photosId} className="mb-2 block">
-                    <span className="inline-flex items-center gap-1">
-                      <ImagePlus className="h-4 w-4" aria-hidden />
-                      Фотоотчёт по трубе {p.siteName.trim() || "—"} (до {MAX_PHOTOS_PER_PIPE})
-                    </span>
-                  </Label>
-                  <Input
-                    id={photosId}
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    capture="environment"
-                    className="cursor-pointer border-dashed py-2"
-                    onChange={(e) => {
-                      addPipelinePhotos(p.localId, e.target.files);
-                      e.target.value = "";
-                    }}
-                  />
-                  {!!p.photos.length && (
-                    <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
-                      {p.photos.map((ph, photoIdx) => (
-                        <div key={photoIdx} className="relative">
-                          <img src={ph.preview} alt={`Фото трубы ${idx + 1} #${photoIdx + 1}`} loading="lazy" decoding="async" className="h-24 w-full rounded-lg object-cover" />
-                          <button
-                            type="button"
-                            className="absolute right-1 top-1 rounded bg-black/60 px-2 py-1 text-xs text-white"
-                            onClick={() => removePipelinePhoto(p.localId, photoIdx)}
-                            aria-label="Удалить фото"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <PhotoAttachField
+                  id={photosId}
+                  label={`Фотоотчёт ${p.siteName.trim() || "—"}`}
+                  maxPhotos={MAX_PHOTOS_PER_PIPE}
+                  photos={p.photos}
+                  onAdd={(files) => handlePipePhotosAdd(addPipelinePhotos, p.localId, files)}
+                  onRemove={(photoIdx) => removePipelinePhoto(p.localId, photoIdx)}
+                />
 
                 <div className="mt-3 space-y-1">
                   <Label htmlFor={`pipeline-${p.localId}-comments`}>Замечания / комментарии</Label>
@@ -1138,43 +1065,14 @@ export function FormPage() {
                   </div>
                 </div>
 
-                <div className="mt-3 surface-muted soft-ring border border-dashed border-slate-300 p-3 theme-dark:border-slate-600">
-                  <Label htmlFor={photosId} className="mb-2 block">
-                    <span className="inline-flex items-center gap-1">
-                      <ImagePlus className="h-4 w-4" aria-hidden />
-                      Фотоотчёт по оборудованию {p.siteName.trim() || "—"} (до {MAX_PHOTOS_PER_PIPE})
-                    </span>
-                  </Label>
-                  <Input
-                    id={photosId}
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    capture="environment"
-                    className="cursor-pointer border-dashed py-2"
-                    onChange={(e) => {
-                      addExtraEquipmentPhotos(p.localId, e.target.files);
-                      e.target.value = "";
-                    }}
-                  />
-                  {!!p.photos.length && (
-                    <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
-                      {p.photos.map((ph, photoIdx) => (
-                        <div key={photoIdx} className="relative">
-                          <img src={ph.preview} alt={`Фото оборудования ${idx + 1} #${photoIdx + 1}`} loading="lazy" decoding="async" className="h-24 w-full rounded-lg object-cover" />
-                          <button
-                            type="button"
-                            className="absolute right-1 top-1 rounded bg-black/60 px-2 py-1 text-xs text-white"
-                            onClick={() => removeExtraEquipmentPhoto(p.localId, photoIdx)}
-                            aria-label="Удалить фото"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <PhotoAttachField
+                  id={photosId}
+                  label={`Фотоотчёт ${p.siteName.trim() || "—"}`}
+                  maxPhotos={MAX_PHOTOS_PER_PIPE}
+                  photos={p.photos}
+                  onAdd={(files) => handlePipePhotosAdd(addExtraEquipmentPhotos, p.localId, files)}
+                  onRemove={(photoIdx) => removeExtraEquipmentPhoto(p.localId, photoIdx)}
+                />
 
                 <div className="mt-3 space-y-1">
                   <Label htmlFor={`extra-equipment-${p.localId}-comments`}>Замечания / комментарии</Label>
@@ -1308,43 +1206,14 @@ export function FormPage() {
                   </div>
                 </div>
 
-                <div className="mt-3 surface-muted soft-ring border border-dashed border-slate-300 p-3 theme-dark:border-slate-600">
-                  <Label htmlFor={photosId} className="mb-2 block">
-                    <span className="inline-flex items-center gap-1">
-                      <ImagePlus className="h-4 w-4" aria-hidden />
-                      Фотоотчёт по оборудованию {p.siteName.trim() || "—"} (до {MAX_PHOTOS_PER_PIPE})
-                    </span>
-                  </Label>
-                  <Input
-                    id={photosId}
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    capture="environment"
-                    className="cursor-pointer border-dashed py-2"
-                    onChange={(e) => {
-                      addEquipmentPhotos(p.localId, e.target.files);
-                      e.target.value = "";
-                    }}
-                  />
-                  {!!p.photos.length && (
-                    <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
-                      {p.photos.map((ph, photoIdx) => (
-                        <div key={photoIdx} className="relative">
-                          <img src={ph.preview} alt={`Фото трубопровода ${idx + 1} #${photoIdx + 1}`} loading="lazy" decoding="async" className="h-24 w-full rounded-lg object-cover" />
-                          <button
-                            type="button"
-                            className="absolute right-1 top-1 rounded bg-black/60 px-2 py-1 text-xs text-white"
-                            onClick={() => removeEquipmentPhoto(p.localId, photoIdx)}
-                            aria-label="Удалить фото"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <PhotoAttachField
+                  id={photosId}
+                  label={`Фотоотчёт ${p.siteName.trim() || "—"}`}
+                  maxPhotos={MAX_PHOTOS_PER_PIPE}
+                  photos={p.photos}
+                  onAdd={(files) => handlePipePhotosAdd(addEquipmentPhotos, p.localId, files)}
+                  onRemove={(photoIdx) => removeEquipmentPhoto(p.localId, photoIdx)}
+                />
 
                 <div className="mt-3 space-y-1">
                   <Label htmlFor={`equipment-${p.localId}-comments`}>Замечания / комментарии</Label>
