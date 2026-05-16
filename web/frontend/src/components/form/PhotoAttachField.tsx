@@ -1,10 +1,12 @@
-import { useId, useRef } from "react";
-import { Camera, ImagePlus } from "lucide-react";
+import { useId, useRef, useState } from "react";
+import { Camera, ImagePlus, Loader2 } from "lucide-react";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Button } from "../ui/button";
 
 export type PhotoDraft = { file: File; preview: string };
+
+const FILE_ACCEPT = "image/jpeg,image/png,image/webp,image/*";
 
 type PhotoAttachFieldProps = {
   id: string;
@@ -19,7 +21,7 @@ type PhotoAttachFieldProps = {
 export function PhotoAttachField({
   id,
   label,
-  hint = "Фото сохранятся только если карточка заполнена полностью.",
+  hint = "Фото сохранятся только если карточка заполнена полностью. Лучше всего JPEG и PNG.",
   maxPhotos,
   photos,
   onAdd,
@@ -27,28 +29,44 @@ export function PhotoAttachField({
 }: PhotoAttachFieldProps) {
   const cameraInputId = useId();
   const cameraRef = useRef<HTMLInputElement>(null);
+  const [processing, setProcessing] = useState(false);
 
   async function handleFiles(files: FileList | null) {
-    await onAdd(files);
+    if (!files?.length || processing) return;
+    setProcessing(true);
+    try {
+      await onAdd(files);
+    } finally {
+      setProcessing(false);
+    }
   }
+
+  const atLimit = photos.length >= maxPhotos;
 
   return (
     <div className="surface-muted soft-ring border border-dashed border-slate-300 p-3 theme-dark:border-slate-600">
       <Label htmlFor={id} className="mb-2 block">
         <span className="inline-flex items-center gap-1">
-          <ImagePlus className="h-4 w-4" aria-hidden />
+          {processing ? (
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+          ) : (
+            <ImagePlus className="h-4 w-4" aria-hidden />
+          )}
           {label} ({photos.length}/{maxPhotos})
         </span>
       </Label>
       <p className="mb-2 text-xs text-slate-500 theme-dark:text-slate-400">{hint}</p>
+      {processing && (
+        <p className="mb-2 text-xs text-primary">Обработка фото, подождите…</p>
+      )}
       <div className="flex flex-wrap gap-2">
         <Input
           id={id}
           type="file"
-          accept="image/*"
+          accept={FILE_ACCEPT}
           multiple
           className="min-w-0 flex-1 cursor-pointer border-dashed py-2"
-          disabled={photos.length >= maxPhotos}
+          disabled={atLimit || processing}
           onChange={async (e) => {
             await handleFiles(e.target.files);
             e.target.value = "";
@@ -59,7 +77,7 @@ export function PhotoAttachField({
           variant="secondary"
           size="sm"
           className="h-12 shrink-0"
-          disabled={photos.length >= maxPhotos}
+          disabled={atLimit || processing}
           onClick={() => cameraRef.current?.click()}
         >
           <Camera className="mr-1 h-4 w-4" aria-hidden />
@@ -69,11 +87,12 @@ export function PhotoAttachField({
           ref={cameraRef}
           id={cameraInputId}
           type="file"
-          accept="image/*"
+          accept={FILE_ACCEPT}
           capture="environment"
           className="sr-only"
           tabIndex={-1}
           aria-hidden
+          disabled={atLimit || processing}
           onChange={async (e) => {
             await handleFiles(e.target.files);
             e.target.value = "";
@@ -96,6 +115,7 @@ export function PhotoAttachField({
                 className="absolute right-1 top-1 rounded bg-black/60 px-2 py-1 text-xs text-white"
                 onClick={() => onRemove(photoIdx)}
                 aria-label="Удалить фото"
+                disabled={processing}
               >
                 ×
               </button>

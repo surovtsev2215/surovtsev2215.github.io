@@ -25,6 +25,15 @@ export type ReportWorkSummary = {
   hasShiftPhotos: boolean;
 };
 
+/** Объём, который учитывается в сводке отчёта (Σ м² / п.м.). */
+export function getReportedPipeVolume(pipe: PipeEntry): number {
+  const kind = inferPipeWorkKind(pipe);
+  if (kind === "shift_foil") {
+    return pipe.pipeLength ?? pipe.totalLength ?? 0;
+  }
+  return pipe.totalLength ?? pipe.pipeLength ?? 0;
+}
+
 export function getReportWorkSummary(report: Report): ReportWorkSummary {
   let pipelineMountM2 = 0;
   let equipmentMountM2 = 0;
@@ -34,12 +43,12 @@ export function getReportWorkSummary(report: Report): ReportWorkSummary {
 
   for (const pipe of report.pipes) {
     const kind = inferPipeWorkKind(pipe);
-    const vol = pipe.totalLength ?? pipe.pipeLength ?? 0;
+    const vol = getReportedPipeVolume(pipe);
     photoCount += pipe.photoUrls?.length ?? 0;
     if (kind === "pipeline_mount") pipelineMountM2 += vol;
     else if (kind === "equipment_mount") equipmentMountM2 += vol;
     else if (kind === "pipeline_demount") demountM2 += vol;
-    else if (kind === "shift_foil") foilPm += pipe.pipeLength ?? vol;
+    else if (kind === "shift_foil") foilPm += vol;
   }
 
   return {
@@ -64,11 +73,12 @@ export function formatWorkSummaryLine(summary: ReportWorkSummary): string {
 export function getPipeDisplayFields(pipe: PipeEntry): { label: string; value: string }[] {
   const kind = inferPipeWorkKind(pipe);
   const dia = pipe.diameter ? `${String(pipe.diameter).replace(".", ",")} мм` : "—";
+  const vol = getReportedPipeVolume(pipe);
   if (kind === "pipeline_demount") {
     return [
       { label: "Трубопровод", value: pipe.siteName || "—" },
       { label: "Диаметр", value: dia },
-      { label: "Объём демонтажа", value: `${pipe.pipeLength ?? pipe.totalLength ?? 0} м²` }
+      { label: "Объём демонтажа", value: `${vol} м²` }
     ];
   }
   if (kind === "equipment_mount") {
@@ -76,15 +86,14 @@ export function getPipeDisplayFields(pipe: PipeEntry): { label: string; value: s
       { label: "Оборудование", value: pipe.siteName || "—" },
       { label: "Толщина ваты", value: pipe.insulationType || "—" },
       { label: "Толщина алюминия", value: pipe.jointsCount ? `${pipe.jointsCount} мм` : "—" },
-      { label: "Объём монтажа", value: `${pipe.totalLength ?? pipe.pipeLength ?? 0} м²` }
+      { label: "Выполненный объём", value: `${vol} м²` }
     ];
   }
   if (kind === "shift_foil") {
     return [
       { label: "Линия", value: pipe.siteName || "—" },
       { label: "Покрывной слой", value: pipe.insulationType || "Фольга-ткань" },
-      { label: "Объём", value: `${pipe.pipeLength ?? 0} п.м.` },
-      { label: "Суммарно", value: `${pipe.totalLength ?? 0} п.м.` }
+      { label: "Выполненный объём", value: `${vol} п.м.` }
     ];
   }
   return [
@@ -92,8 +101,7 @@ export function getPipeDisplayFields(pipe: PipeEntry): { label: string; value: s
     { label: "Диаметр", value: dia },
     { label: "Толщина ваты", value: pipe.insulationType || "—" },
     { label: "Толщина алюминия", value: pipe.jointsCount ? `${pipe.jointsCount} мм` : "—" },
-    { label: "Объём", value: `${pipe.pipeLength ?? 0} м²` },
-    { label: "Суммарно", value: `${pipe.totalLength ?? 0} м²` }
+    { label: "Выполненный объём", value: `${vol} м²` }
   ];
 }
 
@@ -107,5 +115,3 @@ export function groupPipesByWorkKind(pipes: PipeEntry[]): Map<PipeWorkKind, Pipe
   }
   return map;
 }
-
-// remove unused volumeForKind - I defined it but didn't use. Remove from file.

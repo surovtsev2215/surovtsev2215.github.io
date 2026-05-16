@@ -6,22 +6,142 @@ const MAX_PHOTOS_PER_REPORT = 15;
 
 let photoStorageRemote: boolean | null = null;
 
-async function compressImage(file: File, maxSide = 1024): Promise<Blob> {
-  const image = await createImageBitmap(file);
-  const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
-  const w = Math.round(image.width * scale);
-  const h = Math.round(image.height * scale);
+export type PhotoAddResult = {
+  added: number;
+  failed: number;
+  skippedByLimit: number;
+  totalSelected: number;
+};
+
+type DrawableSource = ImageBitmap | HTMLImageElement;
+
+function isHeicFile(file: File): boolean {
+  const mime = (file.type || "").toLowerCase();
+  const name = (file.name || "").toLowerCase();
+  return (
+    mime === "image/heic" ||
+    mime === "image/heif" ||
+    mime === "image/heic-sequence" ||
+    name.endsWith(".heic") ||
+    name.endsWith(".heif")
+  );
+}
+
+function isDirectReadableImage(file: File): boolean {
+  const mime = (file.type || "").toLowerCase();
+  return mime === "image/jpeg" || mime === "image/png" || mime === "image/webp";
+}
+
+function sourceSize(source: DrawableSource): { w: number; h: number } {
+  if (source instanceof HTMLImageElement) {
+    return { w: source.naturalWidth || source.width, h: source.naturalHeight || source.height };
+  }
+  return { w: source.width, h: source.height };
+}
+
+async function heicToJpegBlob(file: File): Promise<Blob> {
+  const mod = await import("heic2any");
+  const heic2any = mod.default;
+  const converted = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.82 });
+  const blob = Array.isArray(converted) ? converted[0] : converted;
+  if (!(blob instanceof Blob)) throw new Error("HEIC convert failed");
+  return blob;
+}
+
+function loadImageElement(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("Не удалось загрузить изображение"));
+    img.src = src;
+  });
+}
+
+async function decodeBlobToSource(blob: Blob): Promise<DrawableSource> {
+  try {
+    return await createImageBitmap(blob);
+  } catch {
+    const url = URL.createObjectURL(blob);
+    try {
+      return await loadImageElement(url);
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+}
+
+async function decodeFileToSource(file: File): Promise<DrawableSource> {
+  try {
+    return await createImageBitmap(file);
+  } catch {
+    /* fall through */
+  }
+
+  if (isHeicFile(file)) {
+    const jpegBlob = await heicToJpegBlob(file);
+    return decodeBlobToSource(jpegBlob);
+  }
+
+  const url = URL.createObjectURL(file);
+  try {
+    return await loadImageElement(url);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+async function drawSourceToJpegBlob(source: DrawableSource, maxSide: number): Promise<Blob> {
+  const { w: srcW, h: srcH } = sourceSize(source);
+  if (!srcW || !srcH) throw new Error("Пустое изображение");
+
+  const scale = Math.min(1, maxSide / Math.max(srcW, srcH));
+  const w = Math.round(srcW * scale);
+  const h = Math.round(srcH * scale);
 
   const canvas = document.createElement("canvas");
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext("2d");
-  if (!ctx) return file;
-  ctx.drawImage(image, 0, 0, w, h);
+  if (!ctx) throw new Error("Canvas недоступен");
+  ctx.drawImage(source, 0, 0, w, h);
 
-  return await new Promise<Blob>((resolve) => {
-    canvas.toBlob((blob) => resolve(blob || file), "image/jpeg", 0.82);
+  if (source instanceof ImageBitmap) source.close();
+
+  return await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error("Не удалось сжать фото"))),
+      "image/jpeg",
+      0.82
+    );
   });
+}
+
+async function fileToJpegBlob(file: File, maxSide = 1024): Promise<Blob> {
+  if (isDirectReadableImage(file) && file.size <= MAX_PHOTO_BYTES && file.size < 800_000) {
+    try {
+      const source = await decodeFileToSource(file);
+      return await drawSourceToJpegBlob(source, maxSide);
+    } catch {
+      /* use full pipeline below */
+    }
+  }
+
+  if (isHeicFile(file)) {
+    const jpegBlob = await heicToJpegBlob(file);
+    const source = await decodeBlobToSource(jpegBlob);
+    return drawSourceToJpegBlob(source, maxSide);
+  }
+
+  const source = await decodeFileToSource(file);
+  return drawSourceToJpegBlob(source, maxSide);
+}
+
+async function compressImage(file: File, maxSide = 1024): Promise<Blob> {
+  const blob = await fileToJpegBlob(file, maxSide);
+  if (blob.size > MAX_PHOTO_BYTES) {
+    throw new Error("Фото слишком большое после сжатия (макс. 3 МБ).");
+  }
+  return blob;
 }
 
 function blobToDataUrl(blob: Blob): Promise<string> {
@@ -33,10 +153,76 @@ function blobToDataUrl(blob: Blob): Promise<string> {
   });
 }
 
-/** JPEG data URL for form preview (HEIC and other formats supported via canvas). */
+/** JPEG data URL for form preview. */
 export async function makePhotoPreview(file: File): Promise<string> {
   const blob = await compressImage(file, 1024);
   return blobToDataUrl(blob);
+}
+
+export async function preparePhotoItems(
+  files: FileList | File[] | null,
+  maxCount: number
+): Promise<{ items: { file: File; preview: string }[]; result: PhotoAddResult }> {
+  const arr = files ? Array.from(files) : [];
+  const totalSelected = arr.length;
+  const skippedByLimit = Math.max(0, totalSelected - maxCount);
+  const toProcess = arr.slice(0, maxCount);
+  const items: { file: File; preview: string }[] = [];
+  let failed = 0;
+
+  for (const file of toProcess) {
+    try {
+      const preview = await makePhotoPreview(file);
+      items.push({ file, preview });
+    } catch {
+      failed += 1;
+    }
+  }
+
+  return {
+    items,
+    result: {
+      added: items.length,
+      failed,
+      skippedByLimit,
+      totalSelected
+    }
+  };
+}
+
+export function formatPhotoAddToast(
+  result: PhotoAddResult
+): { type: "success" | "error" | "warning"; message: string } | null {
+  if (result.totalSelected === 0) return null;
+
+  const { added, failed, skippedByLimit, totalSelected } = result;
+
+  if (added === 0) {
+    return {
+      type: "error",
+      message:
+        "Не удалось открыть фото. Сохраните как JPEG/PNG, используйте «С камеры» или отключите HEIC в настройках iPhone."
+    };
+  }
+
+  if (failed === 0 && skippedByLimit === 0) {
+    return { type: "success", message: `Фото добавлено (${added})` };
+  }
+
+  const parts = [`Добавлено ${added} из ${totalSelected}`];
+  if (failed > 0) {
+    parts.push(
+      `${failed} не открылись — сохраните как JPEG/PNG или снимите через «С камеры»`
+    );
+  }
+  if (skippedByLimit > 0) {
+    parts.push(`ещё ${skippedByLimit} не влезли (лимит на карточку)`);
+  }
+
+  return {
+    type: failed > 0 ? "warning" : "success",
+    message: parts.join(". ") + "."
+  };
 }
 
 export function revokePhotoPreview(preview: string) {
@@ -67,9 +253,6 @@ export async function isRemotePhotoStorageAvailable(): Promise<boolean> {
 
 async function uploadOneToApi(file: File): Promise<string> {
   const blob = await compressImage(file, 1024);
-  if (blob.size > MAX_PHOTO_BYTES) {
-    throw new Error("Фото слишком большое после сжатия (макс. 3 МБ).");
-  }
   const body = new FormData();
   body.append("file", new File([blob], file.name || "photo.jpg", { type: "image/jpeg" }));
 
@@ -95,9 +278,6 @@ async function uploadOneToApi(file: File): Promise<string> {
 
 async function uploadOneLocal(file: File): Promise<string> {
   const blob = await compressImage(file, 1024);
-  if (blob.size > MAX_PHOTO_BYTES) {
-    throw new Error("Фото слишком большое (макс. 3 МБ).");
-  }
   return blobToDataUrl(blob);
 }
 

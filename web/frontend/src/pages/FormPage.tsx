@@ -4,7 +4,13 @@ import { useAuth } from "../contexts/AuthContext";
 import { createReport, subscribeReportsByUser } from "../lib/reportStore";
 import { toast } from "sonner";
 import type { PipeEntry, Report, ShiftWorkType } from "../types";
-import { makePhotoPreview, revokePhotoPreview, uploadReportPhotos } from "../lib/photoUpload";
+import {
+  formatPhotoAddToast,
+  preparePhotoItems,
+  revokePhotoPreview,
+  uploadReportPhotos,
+  type PhotoAddResult
+} from "../lib/photoUpload";
 import { syntheticEmailForUid } from "../lib/syntheticUserEmail";
 import {
   ClipboardList,
@@ -98,8 +104,9 @@ const selectClass = cn(
   "h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 theme-dark:border-slate-700 theme-dark:bg-slate-900 theme-dark:text-slate-100 theme-dark:ring-offset-slate-950"
 );
 
-function pipeTotal(p: PipeDraft): number {
-  return Number(((p.jointsCount ?? 0) * (p.pipeLength ?? 0)).toFixed(2));
+/** Объём из формы — то же значение, что в сводке отчёта (не умножать на толщину алюминия). */
+function reportedVolumeFromDraft(p: PipeDraft): number {
+  return Number((p.pipeLength ?? 0).toFixed(2));
 }
 
 function scrollToFirstInvalidField() {
@@ -293,38 +300,39 @@ export function FormPage() {
     extraEquipmentPipes
   ]);
 
+  function applyPhotoAddToast(result: PhotoAddResult) {
+    const formatted = formatPhotoAddToast(result);
+    if (!formatted) return;
+    if (formatted.type === "success") toast.success(formatted.message, { id: "photo-process" });
+    else if (formatted.type === "warning") toast.warning(formatted.message, { id: "photo-process" });
+    else toast.error(formatted.message, { id: "photo-process" });
+  }
+
+  async function runPhotoAdd(task: () => Promise<PhotoAddResult>, fileCount: number) {
+    if (fileCount > 1) toast.loading("Обработка фото…", { id: "photo-process" });
+    const result = await task();
+    applyPhotoAddToast(result);
+  }
+
   async function handlePipePhotosAdd(
-    addFn: (localId: string, files: FileList | null) => Promise<number>,
+    addFn: (localId: string, files: FileList | null) => Promise<PhotoAddResult>,
     localId: string,
     files: FileList | null
   ) {
-    const added = await addFn(localId, files);
-    if (added > 0) {
-      toast.success(`Фото добавлено (${added})`);
-    } else if (files?.length) {
-      toast.error("Не удалось открыть фото. Попробуйте JPEG или сделайте снимок с камеры.");
-    }
+    if (!files?.length) return;
+    await runPhotoAdd(() => addFn(localId, files), files.length);
   }
 
   async function addShiftPhotos(files: FileList | null) {
     if (!files?.length) return;
     const room = Math.max(0, MAX_PHOTOS_PER_PIPE - shiftPhotos.length);
-    const fileArr = Array.from(files).slice(0, room);
-    const newItems: { file: File; preview: string }[] = [];
-    for (const file of fileArr) {
-      try {
-        const preview = await makePhotoPreview(file);
-        newItems.push({ file, preview });
-      } catch {
-        /* skip */
+    await runPhotoAdd(async () => {
+      const { items, result } = await preparePhotoItems(files, room);
+      if (items.length > 0) {
+        setShiftPhotos((prev) => [...prev, ...items].slice(0, MAX_PHOTOS_PER_PIPE));
       }
-    }
-    if (!newItems.length) {
-      toast.error("Не удалось открыть фото. Попробуйте JPEG или сделайте снимок с камеры.");
-      return;
-    }
-    setShiftPhotos((prev) => [...prev, ...newItems].slice(0, MAX_PHOTOS_PER_PIPE));
-    toast.success(`Фото добавлено (${newItems.length})`);
+      return result;
+    }, files.length);
   }
 
   function removeShiftPhoto(photoIdx: number) {
@@ -410,7 +418,7 @@ export function FormPage() {
           insulationType: p.insulationType,
           jointsCount: p.jointsCount,
           pipeLength: p.pipeLength ?? 0,
-          totalLength: pipeTotal(p),
+          totalLength: reportedVolumeFromDraft(p),
           comments: p.comments,
           photoUrls,
           workKind: "shift_foil" as PipeWorkKind
@@ -432,7 +440,7 @@ export function FormPage() {
           insulationType: p.insulationType,
           jointsCount: p.jointsCount,
           pipeLength: p.pipeLength ?? 0,
-          totalLength: pipeTotal(p),
+          totalLength: reportedVolumeFromDraft(p),
           comments: p.comments,
           photoUrls,
           workKind: "pipeline_mount" as PipeWorkKind
@@ -447,15 +455,14 @@ export function FormPage() {
           p.photos.map((ph) => ph.file),
           p.photos.map((ph) => ph.preview)
         );
-        const normalizedJoints = p.jointsCount > 0 ? p.jointsCount : 1;
         builtPipes.push({
           id: pipeId,
           siteName: p.siteName.trim(),
           diameter: p.diameter,
           insulationType: p.insulationType || "—",
-          jointsCount: normalizedJoints,
+          jointsCount: p.jointsCount > 0 ? p.jointsCount : 1,
           pipeLength: p.pipeLength ?? 0,
-          totalLength: Number((normalizedJoints * (p.pipeLength ?? 0)).toFixed(2)),
+          totalLength: reportedVolumeFromDraft(p),
           comments: p.comments,
           photoUrls,
           workKind: "pipeline_demount" as PipeWorkKind
@@ -477,7 +484,7 @@ export function FormPage() {
           insulationType: p.insulationType,
           jointsCount: p.jointsCount,
           pipeLength: p.pipeLength ?? 0,
-          totalLength: pipeTotal(p),
+          totalLength: reportedVolumeFromDraft(p),
           comments: p.comments,
           photoUrls,
           workKind: "equipment_mount" as PipeWorkKind

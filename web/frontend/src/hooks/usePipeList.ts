@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { makePhotoPreview, revokePhotoPreview } from "../lib/photoUpload";
+import { preparePhotoItems, revokePhotoPreview, type PhotoAddResult } from "../lib/photoUpload";
 
 export interface PipeDraft {
   localId: string;
@@ -11,6 +11,13 @@ export interface PipeDraft {
   comments: string;
   photos: { file: File; preview: string }[];
 }
+
+const emptyPhotoResult: PhotoAddResult = {
+  added: 0,
+  failed: 0,
+  skippedByLimit: 0,
+  totalSelected: 0
+};
 
 function makeEmptyPipe(defaultJointsCount: number): PipeDraft {
   return {
@@ -46,8 +53,8 @@ export function usePipeList(options?: { defaultJointsCount?: number; maxPhotosPe
     });
   }
 
-  async function addPhotos(localId: string, files: FileList | null): Promise<number> {
-    if (!files?.length) return 0;
+  async function addPhotos(localId: string, files: FileList | null): Promise<PhotoAddResult> {
+    if (!files?.length) return emptyPhotoResult;
 
     let room = 0;
     setPipes((prev) => {
@@ -55,27 +62,25 @@ export function usePipeList(options?: { defaultJointsCount?: number; maxPhotosPe
       room = pipe ? Math.max(0, maxPhotosPerPipe - pipe.photos.length) : 0;
       return prev;
     });
-    if (room <= 0) return 0;
-
-    const fileArr = Array.from(files).slice(0, room);
-    const newItems: { file: File; preview: string }[] = [];
-    for (const file of fileArr) {
-      try {
-        const preview = await makePhotoPreview(file);
-        newItems.push({ file, preview });
-      } catch {
-        /* skip broken file */
-      }
+    if (room <= 0) {
+      return {
+        added: 0,
+        failed: 0,
+        skippedByLimit: files.length,
+        totalSelected: files.length
+      };
     }
-    if (!newItems.length) return 0;
 
-    setPipes((prev) =>
-      prev.map((p) => {
-        if (p.localId !== localId) return p;
-        return { ...p, photos: [...p.photos, ...newItems].slice(0, maxPhotosPerPipe) };
-      })
-    );
-    return newItems.length;
+    const { items, result } = await preparePhotoItems(files, room);
+    if (items.length > 0) {
+      setPipes((prev) =>
+        prev.map((p) => {
+          if (p.localId !== localId) return p;
+          return { ...p, photos: [...p.photos, ...items].slice(0, maxPhotosPerPipe) };
+        })
+      );
+    }
+    return result;
   }
 
   function removePhoto(localId: string, photoIdx: number) {
