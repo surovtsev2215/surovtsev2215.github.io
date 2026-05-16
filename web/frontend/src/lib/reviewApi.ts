@@ -1,4 +1,5 @@
 import { apiRequest } from "./apiClient";
+import { invalidateReportsListCache } from "./reportStore";
 import { isApiConfigured } from "./runtimeConfig";
 import type { Report, ReportReviewStatus } from "../types";
 
@@ -12,5 +13,6 @@ export async function submitReportReview(
     method: "POST",
     body: JSON.stringify({ status, note: note ?? "" })
   });
+  invalidateReportsListCache();
   return report;
 }

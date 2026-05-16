@@ -1,8 +1,10 @@
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useDeferredValue, useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { toast } from "sonner";
 import { subscribeAllReports } from "../lib/reportStore";
 import {
   getReportJointsCount,
+  getReportPhotoCount,
   getReportTotalLength,
   matchesText
 } from "../lib/reportAggregations";
@@ -53,18 +55,22 @@ export interface ReportFeed {
   refresh: () => void;
 }
 
-export function useReportFeed(
-  filters: ReportFeedFilters = {},
-  options: { autoRefresh?: boolean } = {}
-): ReportFeed {
-  const autoRefresh = options.autoRefresh ?? true;
-  const { range } = useItrPeriod();
+type ReportFeedSource = {
+  rowsAll: Report[];
+  loading: boolean;
+  error: string | null;
+  lastUpdatedAt: number | null;
+  refresh: () => void;
+};
+
+const ReportFeedContext = createContext<ReportFeedSource | null>(null);
+
+function useReportFeedSource(autoRefresh: boolean): ReportFeedSource {
   const [rowsAll, setRowsAll] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
   const [version, setVersion] = useState(0);
-  const deferredSearch = useDeferredValue(filters.search ?? "");
 
   useEffect(() => {
     setLoading(true);
@@ -85,6 +91,38 @@ export function useReportFeed(
     );
     return () => unsub?.();
   }, [autoRefresh, version]);
+
+  return {
+    rowsAll,
+    loading,
+    error,
+    lastUpdatedAt,
+    refresh: () => setVersion((v) => v + 1)
+  };
+}
+
+export function ReportFeedProvider({
+  children,
+  autoRefresh = true
+}: {
+  children: ReactNode;
+  autoRefresh?: boolean;
+}) {
+  const source = useReportFeedSource(autoRefresh);
+  return <ReportFeedContext.Provider value={source}>{children}</ReportFeedContext.Provider>;
+}
+
+export function useReportFeed(
+  filters: ReportFeedFilters = {},
+  _options: { autoRefresh?: boolean } = {}
+): ReportFeed {
+  const { range } = useItrPeriod();
+  const source = useContext(ReportFeedContext);
+  if (!source) {
+    throw new Error("useReportFeed must be used inside ReportFeedProvider");
+  }
+  const { rowsAll, loading, error, lastUpdatedAt, refresh } = source;
+  const deferredSearch = useDeferredValue(filters.search ?? "");
 
   const rows = useMemo(() => {
     return rowsAll.filter((r) => {
@@ -158,7 +196,7 @@ export function useReportFeed(
         anomalies.push({ reportId: r.id ?? "", reason: "Нулевая протяжённость", reportDate: r.date, userId: r.userId });
       }
       const totalJointsForReport = getReportJointsCount(r);
-      const totalPhotos = r.pipes.reduce((sum, p) => sum + (p.photoUrls?.length ?? 0), 0);
+      const totalPhotos = getReportPhotoCount(r);
       if (totalJointsForReport > 5 && totalPhotos === 0) {
         anomalies.push({
           reportId: r.id ?? "",
@@ -215,6 +253,6 @@ export function useReportFeed(
     lastUpdatedAt,
     totals,
     approvedInPeriod,
-    refresh: () => setVersion((v) => v + 1)
+    refresh
   };
 }

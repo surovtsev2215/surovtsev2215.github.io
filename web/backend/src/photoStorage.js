@@ -1,5 +1,6 @@
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { randomUUID } from "crypto";
+import sharp from "sharp";
 
 function requiredEnv(name) {
   const v = process.env[name];
@@ -32,6 +33,38 @@ function getClient() {
   return client;
 }
 
+async function putObject(key, body, contentType) {
+  const bucket = requiredEnv("S3_BUCKET");
+  await getClient().send(
+    new PutObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      Body: body,
+      ContentType: contentType,
+      CacheControl: "public, max-age=31536000"
+    })
+  );
+  const base = requiredEnv("S3_PUBLIC_BASE_URL").replace(/\/$/, "");
+  return `${base}/${key}`;
+}
+
+async function normalizeJpegBuffers(buffer, mimeType) {
+  const input = sharp(buffer, { failOn: "none" });
+  const main = await input
+    .clone()
+    .rotate()
+    .resize(1600, 1600, { fit: "inside", withoutEnlargement: true })
+    .jpeg({ quality: 85 })
+    .toBuffer();
+  const thumb = await sharp(buffer, { failOn: "none" })
+    .rotate()
+    .resize(400, 400, { fit: "inside", withoutEnlargement: true })
+    .jpeg({ quality: 75 })
+    .toBuffer();
+  return { main, thumb, contentType: "image/jpeg" };
+}
+
+/** @returns {{ url: string, thumbUrl: string }} */
 export async function uploadPhotoBuffer(userId, buffer, mimeType) {
   if (!isPhotoStorageConfigured()) {
     const err = new Error("PHOTO_STORAGE_DISABLED");
@@ -39,20 +72,13 @@ export async function uploadPhotoBuffer(userId, buffer, mimeType) {
     throw err;
   }
 
-  const ext = mimeType === "image/png" ? "png" : "jpg";
-  const key = `reports/${userId}/${new Date().toISOString().slice(0, 10)}/${randomUUID()}.${ext}`;
-  const bucket = requiredEnv("S3_BUCKET");
+  const { main, thumb } = await normalizeJpegBuffers(buffer, mimeType);
+  const day = new Date().toISOString().slice(0, 10);
+  const id = randomUUID();
+  const key = `reports/${userId}/${day}/${id}.jpg`;
+  const thumbKey = `reports/${userId}/${day}/${id}-thumb.jpg`;
 
-  await getClient().send(
-    new PutObjectCommand({
-      Bucket: bucket,
-      Key: key,
-      Body: buffer,
-      ContentType: mimeType,
-      CacheControl: "public, max-age=31536000"
-    })
-  );
-
-  const base = requiredEnv("S3_PUBLIC_BASE_URL").replace(/\/$/, "");
-  return `${base}/${key}`;
+  const url = await putObject(key, main, "image/jpeg");
+  const thumbUrl = await putObject(thumbKey, thumb, "image/jpeg");
+  return { url, thumbUrl };
 }

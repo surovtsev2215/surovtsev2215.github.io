@@ -173,13 +173,37 @@ function payloadToReport(row) {
 }
 
 export async function pgListReports(filter = {}) {
-  let query = "SELECT id, user_id, created_at, payload FROM reports";
+  let query = "SELECT id, user_id, created_at, payload FROM reports WHERE 1=1";
   const params = [];
   if (filter.userId) {
     params.push(filter.userId);
-    query += ` WHERE user_id = $${params.length}`;
+    query += ` AND user_id = $${params.length}`;
+  }
+  if (filter.from) {
+    params.push(String(filter.from));
+    query += ` AND report_date >= $${params.length}`;
+  }
+  if (filter.to) {
+    params.push(String(filter.to));
+    query += ` AND report_date <= $${params.length}`;
+  }
+  if (filter.status) {
+    params.push(String(filter.status));
+    query += ` AND COALESCE(payload->>'status', 'submitted') = $${params.length}`;
+  }
+  if (filter.since) {
+    params.push(Number(filter.since));
+    query += ` AND created_at > $${params.length}`;
   }
   query += " ORDER BY created_at DESC";
+  if (filter.limit) {
+    params.push(Math.min(500, Math.max(1, Number(filter.limit))));
+    query += ` LIMIT $${params.length}`;
+  }
+  if (filter.offset) {
+    params.push(Math.max(0, Number(filter.offset)));
+    query += ` OFFSET $${params.length}`;
+  }
   const { rows } = await pool.query(query, params);
   return rows.map(payloadToReport);
 }

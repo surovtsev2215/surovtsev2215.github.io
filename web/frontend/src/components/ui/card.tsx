@@ -3,7 +3,7 @@ import { cn } from "../../lib/utils";
 
 export const Card = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("surface-card lift-card", className)} {...props} />
+    <div ref={ref} className={cn("surface-card lift-card contain-layout", className)} {...props} />
   )
 );
 Card.displayName = "Card";

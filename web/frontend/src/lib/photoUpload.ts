@@ -433,39 +433,33 @@ export async function uploadReportPhotos(
   _userId: string,
   _reportId: string,
   files: File[],
-  fallbackUrls: string[]
+  _fallbackUrls: string[]
 ): Promise<string[]> {
   if (files.length > MAX_PHOTOS_PER_REPORT) {
     throw new Error(`Максимум ${MAX_PHOTOS_PER_REPORT} фото на отчёт.`);
   }
 
-  const useRemote = await isRemotePhotoStorageAvailable();
+  if (isApiConfigured) {
+    const useRemote = await isRemotePhotoStorageAvailable();
+    if (!useRemote) {
+      throw new Error(
+        "Облачное хранилище фото не настроено на сервере. Обратитесь к администратору (скрипт «Настройка хранилища фото»)."
+      );
+    }
+  }
+
   const out: string[] = [];
 
   for (let i = 0; i < files.length; i += 1) {
     try {
       let url: string;
-      if (useRemote) {
-        try {
-          url = await uploadOneToApi(files[i]);
-        } catch (apiErr) {
-          resetPhotoStorageCache();
-          url = await uploadOneLocal(files[i]);
-          if (apiErr instanceof Error && apiErr.message) {
-            console.warn("[ПТО] Облачная загрузка недоступна, фото в отчёте как base64:", apiErr.message);
-          }
-        }
+      if (isApiConfigured) {
+        url = await uploadOneToApi(files[i]);
       } else {
         url = await uploadOneLocal(files[i]);
       }
       out.push(url);
     } catch (e) {
-      const fallback = fallbackUrls[i];
-      if (fallback?.startsWith("data:image/")) {
-        out.push(fallback);
-        console.warn("[ПТО] Фото сохранено из превью (облако недоступно):", i + 1);
-        continue;
-      }
       const msg = e instanceof Error ? e.message : "ошибка";
       throw new Error(`Фото ${i + 1}: ${msg}`);
     }

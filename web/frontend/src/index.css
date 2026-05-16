@@ -22,6 +22,9 @@ body {
   --premium-violet: rgba(167, 139, 250, 0.92);
   --premium-text-shadow: 0 1px 1px rgba(15, 23, 42, 0.18);
   --premium-outline: rgba(99, 102, 241, 0.26);
+  --header-h: 3.25rem;
+  --bottom-nav-h: 4.25rem;
+  --content-max: 72rem;
 }
 
 ::selection {
@@ -67,7 +70,7 @@ button {
   font: inherit;
 }
 
-/* Мобильная читабельность/тач: предотвращает zoom и улучшает точность нажатий */
+/* Мобильная читабельность/тач */
 @media (max-width: 767px) {
   input,
   textarea,
@@ -130,6 +133,33 @@ button {
     font-size: 0.8125rem;
     line-height: 1.2rem;
   }
+
+  body::before {
+    opacity: 0.22;
+  }
+
+  .glass {
+    backdrop-filter: blur(6px);
+  }
+
+  .badge-live::after {
+    animation: none;
+  }
+
+  .kpi-glow::after,
+  .itr-kpi::after {
+    display: none;
+  }
+
+  .pretty-list-item:hover {
+    transform: none;
+  }
+
+  .surface-floating:hover,
+  .surface-card:hover,
+  .itr-panel:hover {
+    box-shadow: inherit;
+  }
 }
 
 .glass {
@@ -156,16 +186,6 @@ button {
 
   .page-stack {
     @apply space-y-5;
-  }
-}
-
-@media (max-width: 767px) {
-  body::before {
-    opacity: 0.22;
-  }
-
-  .glass {
-    backdrop-filter: blur(6px);
   }
 }
 
@@ -209,7 +229,6 @@ select {
   @apply border-slate-700;
 }
 
-/* Поверхности для карточек, KPI, таблиц (согласовано с тёмной темой) */
 .surface-card {
   @apply rounded-xl border border-slate-200/80 bg-white shadow-sm transition-all duration-200;
   position: relative;
@@ -219,10 +238,12 @@ select {
     0 1px 0 rgba(255, 255, 255, 0.62) inset;
 }
 
-.surface-card:hover {
-  box-shadow:
-    0 10px 22px rgba(15, 23, 42, 0.1),
-    0 1px 0 rgba(255, 255, 255, 0.68) inset;
+@media (hover: hover) and (pointer: fine) {
+  .surface-card:hover {
+    box-shadow:
+      0 10px 22px rgba(15, 23, 42, 0.1),
+      0 1px 0 rgba(255, 255, 255, 0.68) inset;
+  }
 }
 
 .theme-dark .surface-card {
@@ -262,10 +283,12 @@ select {
     inset 0 1px 0 rgba(148, 163, 184, 0.12);
 }
 
-.surface-floating:hover {
-  box-shadow:
-    0 9px 20px rgba(15, 23, 42, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.74);
+@media (hover: hover) and (pointer: fine) {
+  .surface-floating:hover {
+    box-shadow:
+      0 9px 20px rgba(15, 23, 42, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.74);
+  }
 }
 
 .theme-dark .surface-floating:hover {
@@ -386,11 +409,13 @@ select {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.lift-card:hover {
-  transform: translateY(-2px);
-  box-shadow:
-    0 0 0 1px rgba(148, 163, 184, 0.22),
-    0 16px 30px rgba(15, 23, 42, 0.13);
+@media (hover: hover) and (pointer: fine) {
+  .lift-card:hover {
+    transform: translateY(-2px);
+    box-shadow:
+      0 0 0 1px rgba(148, 163, 184, 0.22),
+      0 16px 30px rgba(15, 23, 42, 0.13);
+  }
 }
 
 .kpi-glow {
@@ -408,8 +433,10 @@ select {
   pointer-events: none;
 }
 
-.kpi-glow:hover::after {
-  transform: translateX(120%);
+@media (hover: hover) and (pointer: fine) {
+  .kpi-glow:hover::after {
+    transform: translateX(120%);
+  }
 }
 
 @keyframes routeIn {
@@ -515,10 +542,12 @@ select {
     inset 0 1px 0 rgba(255, 255, 255, 0.65);
 }
 
-.itr-panel:hover {
-  box-shadow:
-    0 10px 22px rgba(15, 23, 42, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+@media (hover: hover) and (pointer: fine) {
+  .itr-panel:hover {
+    box-shadow:
+      0 10px 22px rgba(15, 23, 42, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  }
 }
 
 .theme-dark .itr-panel {
@@ -528,20 +557,11 @@ select {
     inset 0 1px 0 rgba(148, 163, 184, 0.12);
 }
 
-.theme-dark .itr-panel:hover {
-  box-shadow:
-    0 16px 36px rgba(2, 6, 23, 0.62),
-    inset 0 1px 0 rgba(148, 163, 184, 0.16);
-}
-
 .itr-kpi {
   @apply rounded-xl border border-slate-200/80 bg-white/90 p-3;
   box-shadow:
     0 6px 16px rgba(15, 23, 42, 0.07),
     inset 0 1px 0 rgba(255, 255, 255, 0.72);
-}
-
-.itr-kpi {
   position: relative;
   overflow: hidden;
 }
@@ -556,8 +576,10 @@ select {
   pointer-events: none;
 }
 
-.itr-kpi:hover::after {
-  transform: translateX(120%);
+@media (hover: hover) and (pointer: fine) {
+  .itr-kpi:hover::after {
+    transform: translateX(120%);
+  }
 }
 
 .theme-dark .itr-kpi {
@@ -589,29 +611,37 @@ select {
   box-shadow:
     0 1px 2px rgba(15, 23, 42, 0.06),
     inset 0 1px 0 rgba(255, 255, 255, 0.6);
-}
-
-.itr-chip {
   background-image: linear-gradient(120deg, rgba(255, 255, 255, 0.95), rgba(241, 245, 249, 0.92));
   border-color: rgba(148, 163, 184, 0.36);
 }
 
 .pretty-list-item {
-  @apply rounded-xl border border-slate-200 bg-slate-50/90 px-3 py-2 text-sm transition-all duration-200 hover:bg-white;
+  @apply rounded-xl border border-slate-200 bg-slate-50/90 px-3 py-2.5 text-sm transition-all duration-200;
   box-shadow:
     0 4px 12px rgba(15, 23, 42, 0.06),
     inset 0 1px 0 rgba(255, 255, 255, 0.72);
 }
 
-.pretty-list-item:hover {
-  transform: translateY(-1px);
+@media (hover: hover) and (pointer: fine) {
+  .pretty-list-item:hover {
+    @apply bg-white;
+    transform: translateY(-1px);
+  }
+}
+
+.pretty-list-item:active {
+  transform: scale(0.995);
 }
 
 .theme-dark .pretty-list-item {
-  @apply border-slate-700 bg-slate-800/65 text-slate-100 hover:bg-slate-800;
+  @apply border-slate-700 bg-slate-800/65 text-slate-100;
   box-shadow:
     0 6px 14px rgba(2, 6, 23, 0.35),
     inset 0 1px 0 rgba(148, 163, 184, 0.12);
+}
+
+.theme-dark .pretty-list-item:hover {
+  @apply bg-slate-800;
 }
 
 .pretty-list-item:focus-visible {
@@ -625,6 +655,33 @@ select {
   box-shadow:
     0 0 0 2px rgba(245, 158, 11, 0.45),
     0 10px 22px rgba(2, 6, 23, 0.45);
+}
+
+/* Интерактивные карточки списков (отчёты, задачи) */
+.clickable-card {
+  @apply cursor-pointer rounded-2xl border border-slate-200/90 bg-white/95 transition-all duration-200;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+  -webkit-tap-highlight-color: transparent;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 5rem;
+}
+
+.clickable-card:active {
+  transform: scale(0.992);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .clickable-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.1);
+    border-color: rgba(59, 130, 246, 0.35);
+  }
+}
+
+.theme-dark .clickable-card {
+  @apply border-slate-700/90 bg-slate-900/80;
+  box-shadow: 0 8px 20px rgba(2, 6, 23, 0.4);
 }
 
 .auth-shell {
@@ -696,7 +753,6 @@ button:focus-visible,
   background: radial-gradient(circle at 90% 10%, rgba(255, 255, 255, 0.12), transparent 30%);
 }
 
-/* Unified hero/header style for all pages */
 .surface-highlight > div:first-child {
   align-items: flex-start;
   gap: 0.75rem;
@@ -715,24 +771,6 @@ button:focus-visible,
   color: rgba(241, 245, 249, 0.95);
 }
 
-.surface-highlight > div:first-child > svg {
-  width: 1.25rem;
-  height: 1.25rem;
-  flex-shrink: 0;
-  padding: 0.2rem;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(191, 219, 254, 0.14));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.32),
-    0 4px 10px rgba(30, 64, 175, 0.2);
-}
-
-.theme-dark .surface-highlight > div:first-child > svg {
-  border-color: rgba(148, 163, 184, 0.3);
-  background: linear-gradient(135deg, rgba(148, 163, 184, 0.14), rgba(71, 85, 105, 0.18));
-}
-
 .surface-hero-light {
   background:
     radial-gradient(circle at 8% 0%, rgba(255, 255, 255, 0.28), transparent 44%),
@@ -742,10 +780,6 @@ button:focus-visible,
   box-shadow:
     0 8px 18px rgba(59, 130, 246, 0.22),
     inset 0 1px 0 rgba(255, 255, 255, 0.45);
-}
-
-.hero-shell {
-  position: relative;
 }
 
 .hero-title {
@@ -779,6 +813,108 @@ button:focus-visible,
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.4),
     0 6px 14px rgba(30, 64, 175, 0.2);
+}
+
+/* Сетка полей формы: 1 колонка на телефоне, 2 на планшете+ */
+.form-field-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .form-field-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .form-field-grid > .span-full {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Липкая панель отправки (изолировщик, телефон) */
+.mobile-submit-dock {
+  @apply mt-4 space-y-2 border-t border-slate-200/80 pt-4 theme-dark:border-slate-700/80;
+}
+
+@media (max-width: 767px) {
+  .mobile-submit-dock {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom));
+    z-index: 25;
+    margin: 0;
+    border: 0;
+    border-top: 1px solid rgba(148, 163, 184, 0.35);
+    padding: 0.65rem 0.75rem calc(0.65rem + env(safe-area-inset-bottom));
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 -8px 32px rgba(15, 23, 42, 0.12);
+  }
+
+  .theme-dark .mobile-submit-dock {
+    background: rgba(15, 23, 42, 0.92);
+    border-top-color: rgba(71, 85, 105, 0.65);
+  }
+
+  .page-stack.has-submit-dock {
+    padding-bottom: calc(5.5rem + var(--bottom-nav-h) + env(safe-area-inset-bottom));
+  }
+}
+
+/* Нижняя навигация */
+.bottom-nav-shell {
+  @apply border-t border-slate-200/80 bg-white/90 backdrop-blur-lg theme-dark:border-slate-700/80 theme-dark:bg-slate-950/90;
+  box-shadow: 0 -10px 40px rgba(15, 23, 42, 0.08);
+}
+
+.bottom-nav-item {
+  @apply relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl py-2 text-[11px] font-semibold leading-none transition-all;
+  min-height: 3.25rem;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bottom-nav-item[data-active="true"] {
+  color: #1e3a5f;
+  background-color: rgba(30, 58, 95, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(30, 58, 95, 0.12);
+}
+
+.theme-dark .bottom-nav-item[data-active="true"] {
+  color: #f59e0b;
+  background-color: rgba(245, 158, 11, 0.15);
+  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.25);
+}
+
+.bottom-nav-item:active {
+  transform: scale(0.96);
+}
+
+/* Основная область приложения */
+.main-shell {
+  @apply rounded-2xl border border-slate-200/70 bg-white/90 shadow-card theme-dark:border-slate-700/70 theme-dark:bg-slate-900/80;
+}
+
+@media (max-width: 767px) {
+  .main-shell {
+    @apply rounded-xl border-0 bg-transparent p-0 shadow-none theme-dark:bg-transparent;
+  }
+}
+
+.app-header-title {
+  @apply text-sm font-semibold text-primary theme-dark:text-accent sm:text-base;
+  line-height: 1.25;
+}
+
+@media (max-width: 639px) {
+  .app-header-title {
+    font-size: 0.8125rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
 }
 
 * {
@@ -834,9 +970,6 @@ button:focus-visible,
 @media (hover: none) and (pointer: coarse) {
   .lift-card:hover {
     transform: none;
-    box-shadow:
-      0 6px 16px rgba(15, 23, 42, 0.06),
-      0 1px 0 rgba(255, 255, 255, 0.7) inset;
   }
 }
 

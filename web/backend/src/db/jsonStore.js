@@ -104,11 +104,26 @@ export async function jsonDeleteUser(uid) {
   return true;
 }
 
+function applyReportListFilter(rows, filter = {}) {
+  let list = rows.slice();
+  if (filter.userId) list = list.filter((r) => r.userId === filter.userId);
+  if (filter.from) list = list.filter((r) => String(r.date || "") >= String(filter.from));
+  if (filter.to) list = list.filter((r) => String(r.date || "") <= String(filter.to));
+  if (filter.status) {
+    list = list.filter((r) => (r.status || "submitted") === filter.status);
+  }
+  if (filter.since) {
+    const since = Number(filter.since);
+    list = list.filter((r) => Number(r.createdAt || 0) > since);
+  }
+  list.sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
+  const offset = Math.max(0, Number(filter.offset) || 0);
+  const limit = filter.limit ? Math.min(500, Math.max(1, Number(filter.limit))) : list.length;
+  return list.slice(offset, offset + limit);
+}
+
 export async function jsonListReports(filter = {}) {
-  let rows = readDb().reports.slice();
-  if (filter.userId) rows = rows.filter((r) => r.userId === filter.userId);
-  rows.sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
-  return rows;
+  return applyReportListFilter(readDb().reports, filter);
 }
 
 export async function jsonFindReportById(id) {

@@ -14,11 +14,20 @@ export interface Profile {
   fullName: string;
   position?: string;
   brigadeNumber?: string;
+  /** Может подавать отчёт за участников бригады */
+  isBrigadeLeader?: boolean;
   phone?: string;
   telegram?: string;
   role: UserRole;
   allowedSections?: ItrSection[];
   createdAt?: string;
+}
+
+/** Участник работ на карточке трубы/оборудования */
+export interface CrewMemberRef {
+  uid: string;
+  fullName: string;
+  position?: string;
 }
 
 export type PipeWorkKind =
@@ -37,6 +46,10 @@ export interface PipeEntry {
   totalLength: number;
   comments: string;
   photoUrls: string[];
+  /** Present in list API when photoUrls are stripped. */
+  pipePhotoCount?: number;
+  /** Изолировщики, выполнившие работу на этой карточке */
+  crewMembers?: CrewMemberRef[];
   workKind?: PipeWorkKind;
 }
 
@@ -59,12 +72,21 @@ export interface Report {
   weather: string;
   userId: string;
   userEmail: string;
+  /** Кто нажал «Отправить» (бригадир или сам изолировщик) */
+  submittedByUid?: string;
+  submittedByFullName?: string;
+  /** Отчёт бригады: работа нескольких изолировщиков в одной смене */
+  isBrigadeReport?: boolean;
   createdAt: number;
   pipes: PipeEntry[];
   shiftWork?: ShiftWork;
   shiftWorkDescription?: string;
   shiftWorkPhotoUrls?: string[];
   shiftWorkPipes?: string[];
+  /** Photo count when shiftWorkPhotoUrls omitted in list API. */
+  shiftPhotoCount?: number;
+  photoCount?: number;
+  hasPhotos?: boolean;
 
   status?: ReportReviewStatus;
   review?: ReportReview;

@@ -344,7 +344,7 @@ function ItrBadgeProvider() {
     <>
       <ItrSidebar sections={access.sections} badges={badges} activeSection={activeSection} onSelect={selectSection} />
       <nav
-        className="glass fixed bottom-0 left-0 right-0 z-30 border-t pb-[env(safe-area-inset-bottom)] md:hidden"
+        className="bottom-nav-shell fixed bottom-0 left-0 right-0 z-30 pb-[env(safe-area-inset-bottom)] md:hidden"
         aria-label="Основная навигация ИТР"
       >
         <div className="relative mx-auto flex max-w-6xl px-2 pb-2 pt-1.5">
@@ -405,7 +405,7 @@ export function AppLayout() {
       <header className="glass sticky top-0 z-20 border-b">
         <div className="mx-auto flex max-w-7xl flex-wrap items-start justify-between gap-2 px-3 py-2.5 sm:flex-nowrap sm:items-center sm:px-5 sm:py-3.5">
           <div className="min-w-0">
-            <div className="truncate text-sm font-semibold text-primary theme-dark:text-accent sm:text-base">
+            <div className="app-header-title">
               Система контроля изоляции трубопроводов
             </div>
             <div className="mt-0.5 flex items-center gap-1.5 sm:hidden">
@@ -499,7 +499,7 @@ export function AppLayout() {
             </nav>
           </aside>
         ) : null}
-        <main id="main-content" className="glass rounded-2xl p-2.5 pb-24 shadow-card sm:p-4 md:pb-5 lg:p-5">
+        <main id="main-content" className="main-shell p-2.5 pb-24 sm:p-4 md:pb-5 lg:p-5">
           <Suspense
             fallback={
               <div className="space-y-3">
@@ -520,7 +520,7 @@ export function AppLayout() {
 
       {!isDirector && (
         <nav
-          className="glass fixed bottom-0 left-0 right-0 z-30 border-t pb-[env(safe-area-inset-bottom)] md:hidden"
+          className="bottom-nav-shell fixed bottom-0 left-0 right-0 z-30 pb-[env(safe-area-inset-bottom)] md:hidden"
           aria-label="Основная навигация"
         >
           <div className="mx-auto flex max-w-6xl px-2 pb-2 pt-1.5">

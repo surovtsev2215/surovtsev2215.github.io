@@ -29,6 +29,9 @@ import { usePipeList, type PipeDraft } from "../hooks/usePipeList";
 import { formatFullNameForDisplay } from "../lib/normalizeFullName";
 import { VolumeInput } from "../components/form/VolumeInput";
 import { PhotoAttachField } from "../components/form/PhotoAttachField";
+import { PipeCrewField } from "../components/form/PipeCrewField";
+import { useCrewIsolators } from "../hooks/useCrewIsolators";
+import { isBrigadeLeader, pipeEntryFromDraft } from "../lib/brigade";
 import {
   collectPhotoCardsWithoutValidData,
   isValidDemountCard,
@@ -150,6 +153,8 @@ function StepSection({
 
 export function FormPage() {
   const { profile } = useAuth();
+  const brigadeLeader = isBrigadeLeader(profile);
+  const { isolators: crewIsolators, loading: crewLoading, error: crewError } = useCrewIsolators();
   const [date, setDate] = useState(toTodayInputValue());
   const [fullName, setFullName] = useState("");
   const shiftPipeList = usePipeList({ maxPhotosPerPipe: MAX_PHOTOS_PER_PIPE });
@@ -253,7 +258,8 @@ export function FormPage() {
               jointsCount: typeof p.jointsCount === "number" ? p.jointsCount : 1,
               pipeLength: typeof p.pipeLength === "number" ? p.pipeLength : 0,
               comments: p.comments ?? "",
-              photos: []
+              photos: [],
+              crewMembers: Array.isArray(p.crewMembers) ? p.crewMembers : []
             }))
           : [];
       if (draft.shiftPipes && draft.shiftPipes.length > 0) {
@@ -407,6 +413,20 @@ export function FormPage() {
       return;
     }
 
+    if (brigadeLeader) {
+      const cardsNeedingCrew = [
+        ...validShiftPipes,
+        ...validPipelinePipes,
+        ...validEquipment,
+        ...validExtraEquipment
+      ].filter((p) => !(p.crewMembers?.length));
+      if (cardsNeedingCrew.length > 0) {
+        toast.error("Укажите участников бригады на каждой заполненной карточке");
+        scrollToFirstInvalidField();
+        return;
+      }
+    }
+
     setSubmitting(true);
     try {
       toast.loading("Подготовка отчёта и фото…", { id: "submit-report" });
@@ -430,18 +450,20 @@ export function FormPage() {
           p.photos.map((ph) => ph.file),
           p.photos.map((ph) => ph.preview)
         );
-        builtPipes.push({
-          id: pipeId,
-          siteName: p.siteName.trim(),
-          diameter: p.diameter,
-          insulationType: p.insulationType,
-          jointsCount: p.jointsCount,
-          pipeLength: p.pipeLength ?? 0,
-          totalLength: reportedVolumeFromDraft(p),
-          comments: p.comments,
-          photoUrls,
-          workKind: "shift_foil" as PipeWorkKind
-        });
+        builtPipes.push(
+          pipeEntryFromDraft(p, {
+            id: pipeId,
+            siteName: p.siteName.trim(),
+            diameter: p.diameter,
+            insulationType: p.insulationType,
+            jointsCount: p.jointsCount,
+            pipeLength: p.pipeLength ?? 0,
+            totalLength: reportedVolumeFromDraft(p),
+            comments: p.comments,
+            photoUrls,
+            workKind: "shift_foil" as PipeWorkKind
+          })
+        );
       }
 
       for (const p of validPipelinePipes) {
@@ -452,18 +474,20 @@ export function FormPage() {
           p.photos.map((ph) => ph.file),
           p.photos.map((ph) => ph.preview)
         );
-        builtPipes.push({
-          id: pipeId,
-          siteName: p.siteName.trim(),
-          diameter: p.diameter,
-          insulationType: p.insulationType,
-          jointsCount: p.jointsCount,
-          pipeLength: p.pipeLength ?? 0,
-          totalLength: reportedVolumeFromDraft(p),
-          comments: p.comments,
-          photoUrls,
-          workKind: "pipeline_mount" as PipeWorkKind
-        });
+        builtPipes.push(
+          pipeEntryFromDraft(p, {
+            id: pipeId,
+            siteName: p.siteName.trim(),
+            diameter: p.diameter,
+            insulationType: p.insulationType,
+            jointsCount: p.jointsCount,
+            pipeLength: p.pipeLength ?? 0,
+            totalLength: reportedVolumeFromDraft(p),
+            comments: p.comments,
+            photoUrls,
+            workKind: "pipeline_mount" as PipeWorkKind
+          })
+        );
       }
 
       for (const p of validEquipment) {
@@ -474,18 +498,20 @@ export function FormPage() {
           p.photos.map((ph) => ph.file),
           p.photos.map((ph) => ph.preview)
         );
-        builtPipes.push({
-          id: pipeId,
-          siteName: p.siteName.trim(),
-          diameter: p.diameter,
-          insulationType: p.insulationType || "—",
-          jointsCount: p.jointsCount > 0 ? p.jointsCount : 1,
-          pipeLength: p.pipeLength ?? 0,
-          totalLength: reportedVolumeFromDraft(p),
-          comments: p.comments,
-          photoUrls,
-          workKind: "pipeline_demount" as PipeWorkKind
-        });
+        builtPipes.push(
+          pipeEntryFromDraft(p, {
+            id: pipeId,
+            siteName: p.siteName.trim(),
+            diameter: p.diameter,
+            insulationType: p.insulationType || "—",
+            jointsCount: p.jointsCount > 0 ? p.jointsCount : 1,
+            pipeLength: p.pipeLength ?? 0,
+            totalLength: reportedVolumeFromDraft(p),
+            comments: p.comments,
+            photoUrls,
+            workKind: "pipeline_demount" as PipeWorkKind
+          })
+        );
       }
 
       for (const p of validExtraEquipment) {
@@ -496,30 +522,36 @@ export function FormPage() {
           p.photos.map((ph) => ph.file),
           p.photos.map((ph) => ph.preview)
         );
-        builtPipes.push({
-          id: pipeId,
-          siteName: p.siteName.trim(),
-          diameter: p.diameter,
-          insulationType: p.insulationType,
-          jointsCount: p.jointsCount,
-          pipeLength: p.pipeLength ?? 0,
-          totalLength: reportedVolumeFromDraft(p),
-          comments: p.comments,
-          photoUrls,
-          workKind: "equipment_mount" as PipeWorkKind
-        });
+        builtPipes.push(
+          pipeEntryFromDraft(p, {
+            id: pipeId,
+            siteName: p.siteName.trim(),
+            diameter: p.diameter,
+            insulationType: p.insulationType,
+            jointsCount: p.jointsCount,
+            pipeLength: p.pipeLength ?? 0,
+            totalLength: reportedVolumeFromDraft(p),
+            comments: p.comments,
+            photoUrls,
+            workKind: "equipment_mount" as PipeWorkKind
+          })
+        );
       }
 
+      const submittedByFullName = formatFullNameForDisplay(profile?.fullName || fullName);
       const payload: Report = {
         id: reportId,
         date,
         fullName,
-        brigadeNumber: "",
+        brigadeNumber: profile?.brigadeNumber?.trim() || "",
         airTemperature: 0,
         weather: "",
         comments: isolatorWorkDescription,
         userId,
         userEmail,
+        submittedByUid: userId,
+        submittedByFullName,
+        isBrigadeReport: brigadeLeader,
         createdAt: Date.now(),
         pipes: builtPipes,
         shiftWork: hasShiftBlock ? { type: shiftType, value: shiftValue } : undefined,
@@ -584,7 +616,7 @@ export function FormPage() {
     hasValidEquipment ||
     hasValidExtraEquipment;
   return (
-    <div className="page-stack pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-4">
+    <div className="page-stack has-submit-dock pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-4">
       <div className="surface-highlight animate-in-up p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -605,6 +637,21 @@ export function FormPage() {
           </div>
         </CardContent>
       </Card>
+
+      {brigadeLeader ? (
+        <Card className="border-sky-200/90 bg-sky-50/90 theme-dark:border-sky-800/70 theme-dark:bg-sky-950/30">
+          <CardContent className="space-y-1 p-3 text-sm text-sky-950 theme-dark:text-sky-100">
+            <p className="font-semibold">Режим бригадира</p>
+            <p className="text-xs font-normal text-sky-800/90 theme-dark:text-sky-200/90">
+              На каждой карточке укажите, кто выполнял работу. Отчёт отправится от вашего имени за изолировщиков без
+              доступа к приложению.
+            </p>
+            {profile?.brigadeNumber?.trim() ? (
+              <p className="text-xs font-medium">Бригада № {profile.brigadeNumber.trim()}</p>
+            ) : null}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <StepSection
         icon={<Clock3 className="h-4 w-4" />}
@@ -635,7 +682,9 @@ export function FormPage() {
             />
             {existingReportForDate ? (
               <p className="rounded-xl border border-amber-200 bg-amber-50/90 px-3 py-2 text-xs text-amber-900 theme-dark:border-amber-700/70 theme-dark:bg-amber-950/40 theme-dark:text-amber-100">
-                За выбранную дату отчёт уже отправлен. Можно сдать ещё один — оба будут в истории.
+                {brigadeLeader
+                  ? "За эту дату вы уже отправляли отчёт. Можно отправить ещё один с другими карточками и участниками."
+                  : "За выбранную дату отчёт уже отправлен. Можно сдать ещё один — оба будут в истории."}
               </p>
             ) : null}
           </div>
@@ -756,6 +805,17 @@ export function FormPage() {
                           />
                         </div>
                       </div>
+
+                      <PipeCrewField
+                        localId={p.localId}
+                        crewMembers={p.crewMembers ?? []}
+                        onChange={(crewMembers) => updateShiftPipe(p.localId, { crewMembers })}
+                        isolators={crewIsolators}
+                        isolatorsLoading={crewLoading}
+                        isolatorsError={crewError}
+                        currentUserUid={profile?.uid}
+                        crewRequired={brigadeLeader}
+                      />
 
                       <PhotoAttachField
                         id={photosId}
@@ -931,7 +991,18 @@ export function FormPage() {
                   </div>
                 </div>
 
-                <PhotoAttachField
+                      <PipeCrewField
+                        localId={p.localId}
+                        crewMembers={p.crewMembers ?? []}
+                        onChange={(crewMembers) => updatePipelinePipe(p.localId, { crewMembers })}
+                        isolators={crewIsolators}
+                        isolatorsLoading={crewLoading}
+                        isolatorsError={crewError}
+                        currentUserUid={profile?.uid}
+                        crewRequired={brigadeLeader}
+                      />
+
+                      <PhotoAttachField
                   id={photosId}
                   label={`Фотоотчёт ${p.siteName.trim() || "—"}`}
                   maxPhotos={MAX_PHOTOS_PER_PIPE}
@@ -1091,7 +1162,18 @@ export function FormPage() {
                   </div>
                 </div>
 
-                <PhotoAttachField
+                      <PipeCrewField
+                        localId={p.localId}
+                        crewMembers={p.crewMembers ?? []}
+                        onChange={(crewMembers) => updateExtraEquipmentPipe(p.localId, { crewMembers })}
+                        isolators={crewIsolators}
+                        isolatorsLoading={crewLoading}
+                        isolatorsError={crewError}
+                        currentUserUid={profile?.uid}
+                        crewRequired={brigadeLeader}
+                      />
+
+                      <PhotoAttachField
                   id={photosId}
                   label={`Фотоотчёт ${p.siteName.trim() || "—"}`}
                   maxPhotos={MAX_PHOTOS_PER_PIPE}
@@ -1232,7 +1314,18 @@ export function FormPage() {
                   </div>
                 </div>
 
-                <PhotoAttachField
+                      <PipeCrewField
+                        localId={p.localId}
+                        crewMembers={p.crewMembers ?? []}
+                        onChange={(crewMembers) => updateEquipmentPipe(p.localId, { crewMembers })}
+                        isolators={crewIsolators}
+                        isolatorsLoading={crewLoading}
+                        isolatorsError={crewError}
+                        currentUserUid={profile?.uid}
+                        crewRequired={brigadeLeader}
+                      />
+
+                      <PhotoAttachField
                   id={photosId}
                   label={`Фотоотчёт ${p.siteName.trim() || "—"}`}
                   maxPhotos={MAX_PHOTOS_PER_PIPE}
@@ -1267,7 +1360,7 @@ export function FormPage() {
         </StepSection>
       </div>
 
-      <div className="mt-6 space-y-2 border-t border-slate-200/80 pt-4 theme-dark:border-slate-700/80">
+      <div className="mobile-submit-dock">
         {!canSubmit && (
           <p className="text-xs text-amber-600 theme-dark:text-amber-400">
             Для отправки достаточно заполнить любой блок: день зачета, фольма-ткань, трубопроводы или

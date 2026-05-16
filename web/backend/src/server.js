@@ -5,6 +5,11 @@ import jwt from "jsonwebtoken";
 import multer from "multer";
 import * as store from "./db/store.js";
 import { isPhotoStorageConfigured, uploadPhotoBuffer } from "./photoStorage.js";
+import {
+  stripReportPhotosForList,
+  validateReportNoBase64Photos,
+  reportsListEtag
+} from "./reportPhotos.js";
 
 const photoUpload = multer({
   storage: multer.memoryStorage(),
@@ -92,6 +97,8 @@ function buildProfile(user) {
     email: user.email,
     fullName: user.fullName,
     position: typeof user.position === "string" ? user.position : "",
+    brigadeNumber: typeof user.brigadeNumber === "string" ? user.brigadeNumber : "",
+    isBrigadeLeader: Boolean(user.isBrigadeLeader),
     phone: typeof user.phone === "string" ? user.phone : "",
     telegram: typeof user.telegram === "string" ? user.telegram : "",
     role: user.role,
@@ -204,8 +211,8 @@ app.post(
       return res.status(400).json({ error: "Допустимы только файлы изображений." });
     }
     try {
-      const url = await uploadPhotoBuffer(req.auth.uid, file.buffer, mime);
-      return res.status(201).json({ url, size: file.size });
+      const { url, thumbUrl } = await uploadPhotoBuffer(req.auth.uid, file.buffer, mime);
+      return res.status(201).json({ url, thumbUrl, size: file.size });
     } catch (error) {
       if (error?.code === "PHOTO_STORAGE_DISABLED") {
         return res.status(503).json({ error: "Хранилище фото отключено.", code: error.code });
@@ -324,13 +331,50 @@ app.post(
   })
 );
 
+function parseReportListFilter(req, auth) {
+  const all = auth.role === "admin" || auth.role === "director";
+  const filter = all ? {} : { userId: auth.uid };
+  if (req.query.from) filter.from = String(req.query.from);
+  if (req.query.to) filter.to = String(req.query.to);
+  if (req.query.status) filter.status = String(req.query.status);
+  if (req.query.since) filter.since = Number(req.query.since);
+  const limitRaw = Number(req.query.limit);
+  filter.limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(500, limitRaw) : 500;
+  const offsetRaw = Number(req.query.offset);
+  if (Number.isFinite(offsetRaw) && offsetRaw > 0) filter.offset = offsetRaw;
+  return filter;
+}
+
 app.get(
   "/api/reports",
   authRequired,
   asyncRoute(async (req, res) => {
-    const all = req.auth.role === "admin" || req.auth.role === "director";
-    const rows = all ? await store.listReports() : await store.listReports({ userId: req.auth.uid });
-    res.json({ reports: rows });
+    const filter = parseReportListFilter(req, req.auth);
+    const rows = await store.listReports(filter);
+    const full = req.query.full === "1";
+    const reports = full ? rows : rows.map(stripReportPhotosForList);
+    const etag = reportsListEtag(reports);
+    if (req.headers["if-none-match"] === etag) {
+      return res.status(304).end();
+    }
+    res.setHeader("ETag", etag);
+    res.json({ reports });
+  })
+);
+
+app.get(
+  "/api/reports/summary",
+  authRequired,
+  asyncRoute(async (req, res) => {
+    const filter = parseReportListFilter(req, req.auth);
+    const rows = await store.listReports(filter);
+    const reports = rows.map(stripReportPhotosForList);
+    const etag = reportsListEtag(reports);
+    if (req.headers["if-none-match"] === etag) {
+      return res.status(304).end();
+    }
+    res.setHeader("ETag", etag);
+    res.json({ reports });
   })
 );
 
@@ -361,6 +405,23 @@ app.post(
       createdAt: Number(payload.createdAt || Date.now()),
       status: payload.status || "submitted"
     };
+    try {
+      validateReportNoBase64Photos(report);
+    } catch (error) {
+      if (error?.code === "BASE64_PHOTO_REJECTED") {
+        return res.status(400).json({ error: error.message, code: error.code });
+      }
+      throw error;
+    }
+    const bodySize = JSON.stringify(report).length;
+    if (bodySize > 45 * 1024 * 1024) {
+      return res.status(413).json({
+        error: "Отчёт слишком большой. Используйте облачное хранилище фото (R2) и меньше вложений."
+      });
+    }
+    if (bodySize > 2 * 1024 * 1024) {
+      console.warn(`[backend] large report POST ${report.id} size=${Math.round(bodySize / 1024)}KB`);
+    }
     await store.createReport(report);
     return res.status(201).json({ report });
   })
@@ -443,11 +504,15 @@ app.put(
       return res.status(400).json({ error: "allowedSections содержит недопустимые значения." });
     }
 
+    const brigadeNumber = String(req.body?.brigadeNumber ?? "").trim();
+    const isBrigadeLeader = Boolean(req.body?.isBrigadeLeader);
     const passwordHash = password ? await bcrypt.hash(password, 10) : null;
     await store.updateUser(uid, (target) => {
       target.fullName = fullName;
       target.fullNameNormalized = norm;
       target.position = positionRaw;
+      target.brigadeNumber = brigadeNumber;
+      target.isBrigadeLeader = nextRole === "isolator" ? isBrigadeLeader : false;
       target.role = nextRole;
       if (nextRole === "director") {
         if (nextAllowedSections) {
@@ -565,6 +630,32 @@ app.get(
   asyncRoute(async (_req, res) => {
     const users = (await store.listUsers())
       .map((u) => buildProfile(u))
+      .sort((a, b) => (a.fullName || "").localeCompare(b.fullName || "", "ru-RU"));
+    return res.json({ users });
+  })
+);
+
+app.get(
+  "/api/crew/isolators",
+  authRequired,
+  asyncRoute(async (req, res) => {
+    const me = await store.findUserByUid(req.auth.uid);
+    let rows = (await store.listUsers()).filter((u) => u.role === "isolator");
+    const myBrigade = String(me?.brigadeNumber || "").trim();
+    if (myBrigade) {
+      rows = rows.filter((u) => {
+        const b = String(u.brigadeNumber || "").trim();
+        return !b || b === myBrigade;
+      });
+    }
+    const users = rows
+      .map((u) => ({
+        uid: u.uid,
+        fullName: u.fullName,
+        position: typeof u.position === "string" ? u.position : "",
+        brigadeNumber: typeof u.brigadeNumber === "string" ? u.brigadeNumber : "",
+        role: "isolator"
+      }))
       .sort((a, b) => (a.fullName || "").localeCompare(b.fullName || "", "ru-RU"));
     return res.json({ users });
   })

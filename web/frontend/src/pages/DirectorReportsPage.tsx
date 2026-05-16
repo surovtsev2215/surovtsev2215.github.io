@@ -13,6 +13,7 @@ import { useUsersDirectory } from "../hooks/useUsersDirectory";
 import { formatLineNames } from "../lib/reportAggregations";
 import { formatWorkSummaryLine, getReportWorkSummary } from "../lib/pipeWorkKind";
 import { formatFullNameForDisplay } from "../lib/normalizeFullName";
+import { collectUniqueCrewFromReport, formatCrewLine } from "../lib/brigade";
 import { exportExcel, exportPdf } from "../lib/exportReports";
 import { PeriodSwitcher } from "../components/itr/PeriodSwitcher";
 import { ApprovedReportsOverview } from "../components/itr/ApprovedReportsOverview";
@@ -239,7 +240,7 @@ export function DirectorReportsPage() {
                 key={r.id ?? r.createdAt}
                 role="button"
                 tabIndex={0}
-                className="surface-table-row-interactive cursor-pointer"
+                className="clickable-card surface-table-row-interactive"
                 onClick={() =>
                   r.id &&
                   navigate(`/report/${r.id}`, {
@@ -268,7 +269,13 @@ export function DirectorReportsPage() {
                   </div>
                   <div className="mt-1 text-slate-600 theme-dark:text-slate-300">
                     Блок {r.fullName || "—"} · {formatWorkSummaryLine(workSummary)}
+                    {r.isBrigadeReport ? " · отчёт бригады" : ""}
                     {workSummary.photoCount > 0 ? ` · фото: ${workSummary.photoCount}` : ""}
+                  {formatCrewLine(collectUniqueCrewFromReport(r)) ? (
+                    <p className="mt-0.5 text-xs text-slate-500 theme-dark:text-slate-400">
+                      Участники: {formatCrewLine(collectUniqueCrewFromReport(r))}
+                    </p>
+                  ) : null}
                   </div>
                 </CardContent>
               </Card>

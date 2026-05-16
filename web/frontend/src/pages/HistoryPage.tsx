@@ -10,6 +10,7 @@ import {
   getReportTotalLength,
   matchesText
 } from "../lib/reportAggregations";
+import { collectUniqueCrewFromReport, formatCrewLine } from "../lib/brigade";
 import type { Report } from "../types";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
@@ -222,7 +223,7 @@ export function HistoryPage() {
                 key={r.id ?? r.createdAt}
                 role="button"
                 tabIndex={0}
-                className="surface-table-row-interactive cursor-pointer transition hover:shadow-md"
+                className="clickable-card surface-table-row-interactive"
                 onClick={() => r.id && navigate(`/report/${r.id}`)}
                 onKeyDown={(e) => {
                   if ((e.key === "Enter" || e.key === " ") && r.id) {
@@ -238,6 +239,12 @@ export function HistoryPage() {
                   </div>
                   <div className="mt-1 text-sm text-slate-600 theme-dark:text-slate-300">
                     Блок {r.fullName || "—"} · {pipeCount} {pipeCount === 1 ? "труба" : "труб(ы)"} · Σ {totalLen.toFixed(1)} м
+                    {r.isBrigadeReport ? " · отчёт бригады" : ""}
+                  {formatCrewLine(collectUniqueCrewFromReport(r)) ? (
+                    <p className="mt-0.5 text-xs text-slate-500 theme-dark:text-slate-400">
+                      Участники: {formatCrewLine(collectUniqueCrewFromReport(r))}
+                    </p>
+                  ) : null}
                   </div>
                 </CardContent>
               </Card>

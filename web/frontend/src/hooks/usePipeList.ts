@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { preparePhotoItems, revokePhotoPreview, type PhotoAddResult } from "../lib/photoUpload";
+import type { CrewMemberRef } from "../types";
 
 export interface PipeDraft {
   localId: string;
@@ -10,6 +11,7 @@ export interface PipeDraft {
   pipeLength?: number;
   comments: string;
   photos: { file: File; preview: string }[];
+  crewMembers: CrewMemberRef[];
 }
 
 const emptyPhotoResult: PhotoAddResult = {
@@ -28,7 +30,8 @@ function makeEmptyPipe(defaultJointsCount: number): PipeDraft {
     jointsCount: defaultJointsCount,
     pipeLength: undefined,
     comments: "",
-    photos: []
+    photos: [],
+    crewMembers: []
   };
 }
 

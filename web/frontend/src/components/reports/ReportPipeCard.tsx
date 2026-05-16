@@ -1,41 +1,9 @@
-import { memo, useState } from "react";
+import { memo } from "react";
 import type { PipeEntry } from "../../types";
 import { getPipeDisplayFields, inferPipeWorkKind } from "../../lib/pipeWorkKind";
 import { WorkKindBadge } from "./WorkKindBadge";
+import { LazyReportPhotoThumb } from "./LazyReportPhotoThumb";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-
-function ReportPhotoThumb({
-  url,
-  index,
-  onOpen
-}: {
-  url: string;
-  index: number;
-  onOpen: () => void;
-}) {
-  const [ok, setOk] = useState(true);
-  if (!ok) {
-    return (
-      <div className="flex aspect-square items-center justify-center rounded-xl border border-dashed p-2 text-center text-xs text-slate-500">
-        Фото недоступно
-      </div>
-    );
-  }
-  return (
-    <button
-      type="button"
-      className="group relative aspect-square overflow-hidden rounded-xl border border-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary theme-dark:border-slate-600"
-      onClick={onOpen}
-    >
-      <img
-        src={url}
-        alt={`Фото ${index + 1}`}
-        className="h-full w-full object-cover transition group-hover:scale-105"
-        onError={() => setOk(false)}
-      />
-    </button>
-  );
-}
 
 export const ReportPipeCard = memo(function ReportPipeCard({
   pipe,
@@ -90,7 +58,7 @@ export const ReportPipeCard = memo(function ReportPipeCard({
             </div>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
               {pipe.photoUrls.map((url, i) => (
-                <ReportPhotoThumb key={`${url}-${i}`} url={url} index={i} onOpen={() => onOpenPhoto(url)} />
+                <LazyReportPhotoThumb key={`${url}-${i}`} url={url} index={i} onOpen={() => onOpenPhoto(url)} />
               ))}
             </div>
           </div>

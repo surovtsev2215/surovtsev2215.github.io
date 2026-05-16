@@ -3,10 +3,7 @@ import { WidgetCard } from "./WidgetCard";
 import { StatTile } from "./StatTile";
 import { Skeleton } from "../ui/skeleton";
 import { Button } from "../ui/button";
-import {
-  formatApprovedVolumeLine,
-  type ApprovedReportsSummary
-} from "../../lib/approvedReportsSummary";
+import type { ApprovedReportsSummary } from "../../lib/approvedReportsSummary";
 
 type ApprovedReportsOverviewProps = {
   summary: ApprovedReportsSummary;
@@ -26,12 +23,6 @@ export function ApprovedReportsOverview({
   if (loading) {
     return <Skeleton className="h-28 w-full rounded-xl" />;
   }
-
-  const volumeLine = formatApprovedVolumeLine(summary);
-  const extras: string[] = [];
-  if (summary.photoCount > 0) extras.push(`фото: ${summary.photoCount}`);
-  if (summary.foilPm > 0) extras.push(`фольга ${summary.foilPm} п.м.`);
-  const summaryText = [volumeLine, ...extras].filter(Boolean).join(" · ");
 
   return (
     <WidgetCard
@@ -70,10 +61,6 @@ export function ApprovedReportsOverview({
             value={summary.equipmentMountM2 > 0 ? `${summary.equipmentMountM2} м²` : "—"}
           />
         </div>
-
-        <p className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2 text-sm text-slate-700 theme-dark:border-slate-700 theme-dark:bg-slate-900/50 theme-dark:text-slate-200">
-          {summaryText}
-        </p>
 
         {summary.topBlocks.length > 0 ? (
           <div>

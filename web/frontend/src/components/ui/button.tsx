@@ -4,7 +4,7 @@ import { forwardRef, type ButtonHTMLAttributes } from "react";
 import { cn } from "../../lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-55 disabled:hover:translate-y-0 disabled:hover:shadow-none theme-dark:focus-visible:ring-offset-slate-950",
+  "inline-flex touch-manipulation items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-all duration-200 ease-smooth fine-hover:hover:-translate-y-0.5 fine-hover:hover:shadow-md active:translate-y-0 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-55 disabled:hover:translate-y-0 disabled:hover:shadow-none theme-dark:focus-visible:ring-offset-slate-950 touch-only:min-h-[44px]",
   {
     variants: {
       variant: {

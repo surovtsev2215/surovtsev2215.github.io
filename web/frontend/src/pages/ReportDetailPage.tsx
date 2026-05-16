@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useLocation, useParams } from "react-router-dom";
 import { ClipboardList, FileText } from "lucide-react";
 import { toast } from "sonner";
@@ -6,6 +6,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { fetchReportById } from "../lib/reportStore";
 import { formatLineNames } from "../lib/reportAggregations";
 import { formatWorkSummaryLine, getReportWorkSummary, groupPipesByWorkKind, PIPE_WORK_LABELS } from "../lib/pipeWorkKind";
+import { LazyReportPhotoThumb } from "../components/reports/LazyReportPhotoThumb";
 import { ReportPipeCard } from "../components/reports/ReportPipeCard";
 import type { PipeWorkKind } from "../types";
 import { submitReportReview } from "../lib/reviewApi";
@@ -18,6 +19,7 @@ import { Skeleton } from "../components/ui/skeleton";
 import { TaskDialog } from "../components/itr/TaskDialog";
 import { useUsersDirectory } from "../hooks/useUsersDirectory";
 import { formatFullNameForDisplay } from "../lib/normalizeFullName";
+import { collectUniqueCrewFromReport, formatCrewLine } from "../lib/brigade";
 
 const STATUS_LABELS: Record<ReportReviewStatus, string> = {
   submitted: "На согласование",
@@ -38,39 +40,6 @@ function StatusBadge({ status }: { status: ReportReviewStatus }) {
     </span>
   );
 }
-
-const ReportPhotoThumb = memo(function ReportPhotoThumb({
-  url,
-  index,
-  onOpen
-}: {
-  url: string;
-  index: number;
-  onOpen: () => void;
-}) {
-  const [ok, setOk] = useState(true);
-  if (!ok) {
-    return (
-      <div className="flex aspect-square items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 p-2 text-center text-xs text-slate-500 theme-dark:border-slate-600 theme-dark:bg-slate-800 theme-dark:text-slate-400">
-        Фото недоступно (устаревшая или битая ссылка)
-      </div>
-    );
-  }
-  return (
-    <button
-      type="button"
-      className="group relative aspect-square overflow-hidden rounded-xl border border-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary theme-dark:border-slate-600"
-      onClick={onOpen}
-    >
-      <img
-        src={url}
-        alt={`Фото ${index + 1}`}
-        className="h-full w-full object-cover transition group-hover:scale-105"
-        onError={() => setOk(false)}
-      />
-    </button>
-  );
-});
 
 const SECTION_ORDER: PipeWorkKind[] = ["shift_foil", "pipeline_mount", "equipment_mount", "pipeline_demount"];
 
@@ -167,6 +136,10 @@ export function ReportDetailPage() {
   const canReview = (role === "director" || role === "admin") && isApiConfigured;
   const canTask = canReview;
   const authorDisplay = author?.fullName ? formatFullNameForDisplay(author.fullName) : report.userEmail;
+  const crewSummary = formatCrewLine(collectUniqueCrewFromReport(report));
+  const submittedByDisplay = report.submittedByFullName
+    ? formatFullNameForDisplay(report.submittedByFullName)
+    : authorDisplay;
   const reportLabel = `${report.date} · ${formatLineNames(report)}`;
 
   const hasShiftExtras =
@@ -184,6 +157,16 @@ export function ReportDetailPage() {
               {report.date} · {authorDisplay}
               {author?.position ? ` · ${author.position}` : ""}
             </p>
+            {report.isBrigadeReport ? (
+              <p className="mt-1 text-xs text-slate-100/85">
+                Отчёт бригады
+                {report.brigadeNumber ? ` № ${report.brigadeNumber}` : ""}
+                {submittedByDisplay ? ` · подал ${submittedByDisplay}` : ""}
+              </p>
+            ) : null}
+            {crewSummary ? (
+              <p className="mt-1 text-xs text-slate-100/80">Участники: {crewSummary}</p>
+            ) : null}
             <div className="mt-2">
               <StatusBadge status={status} />
             </div>
@@ -294,7 +277,7 @@ export function ReportDetailPage() {
                   </div>
                   <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
                     {report.shiftWorkPhotoUrls.map((url, i) => (
-                      <ReportPhotoThumb
+                      <LazyReportPhotoThumb
                         key={`${url}-${i}`}
                         url={url}
                         index={i}

@@ -6,8 +6,8 @@ import { Button } from "../ui/button";
 export function LoadingState({ label = "Загрузка..." }: { label?: string }) {
   return (
     <Card className="surface-floating">
-      <CardContent className="flex items-center gap-3 p-4 text-sm text-slate-600 theme-dark:text-slate-300">
-        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+      <CardContent className="flex flex-col items-center justify-center gap-3 p-8 text-center text-sm text-slate-600 theme-dark:text-slate-300 sm:flex-row sm:justify-start sm:text-left">
+        <Loader2 className="h-6 w-6 animate-spin text-primary theme-dark:text-accent" aria-hidden />
         <span>{label}</span>
       </CardContent>
     </Card>
@@ -25,9 +25,9 @@ export function EmptyState({
 }) {
   return (
     <Card className="surface-floating">
-      <CardContent className="space-y-3 p-5 text-slate-600 theme-dark:text-slate-300">
-        <div className="flex items-center gap-2 text-slate-700 theme-dark:text-slate-200">
-          <Inbox className="h-4 w-4" aria-hidden />
+      <CardContent className="space-y-3 p-6 text-center text-slate-600 theme-dark:text-slate-300 sm:p-8 sm:text-left">
+        <div className="flex flex-col items-center gap-2 text-slate-700 sm:flex-row theme-dark:text-slate-200">
+          <Inbox className="h-8 w-8 shrink-0 text-slate-400 theme-dark:text-slate-500 sm:h-4 sm:w-4" aria-hidden />
           <p className="font-medium">{title}</p>
         </div>
         {description ? <p className="text-sm">{description}</p> : null}

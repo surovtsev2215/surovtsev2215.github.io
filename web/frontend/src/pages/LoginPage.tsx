@@ -107,7 +107,7 @@ export function LoginPage() {
             {error}
           </p>
         )}
-        <Button type="submit" className="w-full" disabled={loading}>
+        <Button type="submit" size="lg" className="w-full" disabled={loading}>
           {loading ? "Вход..." : "Войти"}
         </Button>
         <p className="text-center text-xs text-slate-500 theme-dark:text-slate-400">

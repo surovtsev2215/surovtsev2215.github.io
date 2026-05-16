@@ -1,4 +1,5 @@
 import type { PipeEntry, PipeWorkKind, Report } from "../types";
+import { formatCrewLine } from "./brigade";
 
 export const PIPE_WORK_LABELS: Record<PipeWorkKind, { short: string; section: string }> = {
   pipeline_mount: { short: "Монтаж · трубы", section: "Теплоизоляция трубопроводов" },
@@ -39,12 +40,12 @@ export function getReportWorkSummary(report: Report): ReportWorkSummary {
   let equipmentMountM2 = 0;
   let demountM2 = 0;
   let foilPm = 0;
-  let photoCount = (report.shiftWorkPhotoUrls?.length ?? 0) > 0 ? report.shiftWorkPhotoUrls!.length : 0;
+  let photoCount = report.shiftPhotoCount ?? report.shiftWorkPhotoUrls?.length ?? 0;
 
   for (const pipe of report.pipes) {
     const kind = inferPipeWorkKind(pipe);
     const vol = getReportedPipeVolume(pipe);
-    photoCount += pipe.photoUrls?.length ?? 0;
+    photoCount += pipe.pipePhotoCount ?? pipe.photoUrls?.length ?? 0;
     if (kind === "pipeline_mount") pipelineMountM2 += vol;
     else if (kind === "equipment_mount") equipmentMountM2 += vol;
     else if (kind === "pipeline_demount") demountM2 += vol;
@@ -57,7 +58,7 @@ export function getReportWorkSummary(report: Report): ReportWorkSummary {
     demountM2: Number(demountM2.toFixed(2)),
     foilPm: Number(foilPm.toFixed(2)),
     photoCount,
-    hasShiftPhotos: (report.shiftWorkPhotoUrls?.length ?? 0) > 0
+    hasShiftPhotos: (report.shiftPhotoCount ?? report.shiftWorkPhotoUrls?.length ?? 0) > 0
   };
 }
 
@@ -81,10 +82,13 @@ export function getPipeDisplayFields(
     workBlock?.trim() ?
       [{ label: "Блок производства работ", value: workBlock.trim() }]
     : [];
+  const crewLine = formatCrewLine(pipe.crewMembers);
+  const crewField = crewLine ? [{ label: "Участники", value: crewLine }] : [];
 
   if (kind === "pipeline_demount") {
     return [
       ...blockField,
+      ...crewField,
       { label: "Трубопровод", value: pipe.siteName || "—" },
       { label: "Диаметр", value: dia },
       { label: "Объём демонтажа", value: `${vol} м²` }
@@ -93,6 +97,7 @@ export function getPipeDisplayFields(
   if (kind === "equipment_mount") {
     return [
       ...blockField,
+      ...crewField,
       { label: "Оборудование", value: pipe.siteName || "—" },
       { label: "Толщина ваты", value: pipe.insulationType || "—" },
       { label: "Толщина алюминия", value: pipe.jointsCount ? `${pipe.jointsCount} мм` : "—" },
@@ -102,6 +107,7 @@ export function getPipeDisplayFields(
   if (kind === "shift_foil") {
     return [
       ...blockField,
+      ...crewField,
       { label: "Линия", value: pipe.siteName || "—" },
       { label: "Покрывной слой", value: pipe.insulationType || "Фольга-ткань" },
       { label: "Выполненный объём", value: `${vol} п.м.` }
@@ -109,6 +115,7 @@ export function getPipeDisplayFields(
   }
   return [
     ...blockField,
+    ...crewField,
     { label: "Линия трубопровода", value: pipe.siteName || "—" },
     { label: "Диаметр", value: dia },
     { label: "Толщина ваты", value: pipe.insulationType || "—" },

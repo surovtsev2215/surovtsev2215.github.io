@@ -1,13 +1,15 @@
 import type { Report } from "../types";
-import { apiRequest } from "./apiClient";
-import { isApiConfigured, isDemoAllowed } from "./runtimeConfig";
+import { apiRequest, getApiToken } from "./apiClient";
+import { buildApiUrl, isApiConfigured, isDemoAllowed } from "./runtimeConfig";
 import { normalizeReport } from "./reportAggregations";
 
 const KEY = "pto-demo-reports";
 const EVENT = "pto-demo-reports-changed";
-const REPORT_POLL_INTERVAL_MS = 12000;
+const REPORT_POLL_INTERVAL_MS = 45000;
 const REPORT_CACHE_TTL_MS = 5000;
+
 let reportsCache: { at: number; rows: Report[] } | null = null;
+let reportsListEtag: string | null = null;
 
 function assertApiOrDemo() {
   if (!isApiConfigured && !isDemoAllowed) {
@@ -32,6 +34,41 @@ function saveDemoReport(report: Report) {
   window.dispatchEvent(new CustomEvent(EVENT));
 }
 
+async function fetchReportsFromApi(options?: {
+  userId?: string;
+  since?: number;
+}): Promise<Report[]> {
+  const params = new URLSearchParams();
+  params.set("limit", "500");
+  if (options?.since && options.since > 0) params.set("since", String(options.since));
+
+  const token = getApiToken();
+  const headers: HeadersInit = {};
+  if (token) headers.Authorization = `Bearer ${token}`;
+  if (reportsListEtag) headers["If-None-Match"] = reportsListEtag;
+
+  const res = await fetch(buildApiUrl(`/api/reports?${params.toString()}`), { headers });
+  if (res.status === 304 && reportsCache) {
+    return reportsCache.rows;
+  }
+  if (!res.ok) {
+    let message = `Ошибка загрузки отчётов (${res.status})`;
+    try {
+      const data = (await res.json()) as { error?: string };
+      if (data.error) message = data.error;
+    } catch {
+      /* noop */
+    }
+    throw new Error(message);
+  }
+  const etag = res.headers.get("ETag");
+  if (etag) reportsListEtag = etag;
+  const data = (await res.json()) as { reports: Report[] };
+  const rows = data.reports.map((r) => normalizeReport(r));
+  reportsCache = { at: Date.now(), rows };
+  return rows;
+}
+
 export async function createReport(report: Report) {
   assertApiOrDemo();
   if (isApiConfigured) {
@@ -41,6 +78,7 @@ export async function createReport(report: Report) {
       timeoutMs: 120000
     });
     reportsCache = null;
+    reportsListEtag = null;
     return;
   }
   saveDemoReport(report);
@@ -79,9 +117,10 @@ export function subscribeReportsByUser(
       if (inFlight) return;
       inFlight = true;
       try {
-        const { reports } = await apiRequest<{ reports: Report[] }>("/api/reports");
-        reportsCache = { at: Date.now(), rows: reports };
-        if (!disposed) callback(reports.filter((r) => r.userId === userId).map((r) => normalizeReport(r)));
+        const rows = await fetchReportsFromApi();
+        if (!disposed) {
+          callback(rows.filter((r) => r.userId === userId).map((r) => normalizeReport(r)));
+        }
       } catch {
         if (!disposed) onError?.("Не удалось загрузить отчёты. Проверьте сеть.");
       } finally {
@@ -127,9 +166,8 @@ export function subscribeAllReports(
       if (inFlight) return;
       inFlight = true;
       try {
-        const { reports } = await apiRequest<{ reports: Report[] }>("/api/reports");
-        reportsCache = { at: Date.now(), rows: reports };
-        if (!disposed) callback(reports.map((r) => normalizeReport(r)));
+        const rows = await fetchReportsFromApi();
+        if (!disposed) callback(rows.map((r) => normalizeReport(r)));
       } catch {
         if (!disposed) onError?.("Не удалось загрузить отчёты. Проверьте сеть.");
       } finally {
@@ -154,4 +192,9 @@ export function subscribeAllReports(
   emit();
   window.addEventListener(EVENT, emit);
   return () => window.removeEventListener(EVENT, emit);
+}
+
+export function invalidateReportsListCache() {
+  reportsCache = null;
+  reportsListEtag = null;
 }

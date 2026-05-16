@@ -1,4 +1,22 @@
-import type { PipeEntry, Report } from "../types";
+import type { CrewMemberRef, PipeEntry, Report } from "../types";
+
+function normalizeCrewMembers(raw: unknown): CrewMemberRef[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const out: CrewMemberRef[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const row = item as Partial<CrewMemberRef>;
+    const uid = String(row.uid || "").trim();
+    const fullName = String(row.fullName || "").trim();
+    if (!uid || !fullName) continue;
+    out.push({
+      uid,
+      fullName,
+      position: typeof row.position === "string" && row.position.trim() ? row.position.trim() : undefined
+    });
+  }
+  return out.length ? out : undefined;
+}
 
 function makePipeFromLegacy(raw: Partial<Report>, fallbackId: string): PipeEntry {
   const jointsCount = typeof raw.jointsCount === "number" ? raw.jointsCount : 0;
@@ -38,6 +56,7 @@ export function normalizeReport(raw: Report | (Partial<Report> & Record<string, 
             : Number(((p.jointsCount ?? 0) * (p.pipeLength ?? 0)).toFixed(2)),
         comments: p.comments ?? "",
         photoUrls: Array.isArray(p.photoUrls) ? p.photoUrls : [],
+        crewMembers: normalizeCrewMembers(p.crewMembers),
         workKind: p.workKind
       }))
     };
@@ -59,6 +78,16 @@ export function getReportJointsCount(r: Report): number {
 
 export function getReportPipeCount(r: Report): number {
   return r.pipes.length;
+}
+
+export function getReportPhotoCount(r: Report): number {
+  if (typeof r.photoCount === "number") return r.photoCount;
+  let count = r.shiftPhotoCount ?? r.shiftWorkPhotoUrls?.length ?? 0;
+  for (const p of r.pipes) {
+    count += p.pipePhotoCount ?? p.photoUrls?.length ?? 0;
+  }
+  if (Array.isArray(r.photoUrls)) count += r.photoUrls.length;
+  return count;
 }
 
 export function getReportLineNames(r: Report): string[] {

@@ -6,6 +6,7 @@ import { AppLayout } from "./components/layout/AppLayout";
 import { ErrorBoundary } from "./components/feedback/ErrorBoundary";
 import { Skeleton } from "./components/ui/skeleton";
 import { buildItrAccess, type ItrSection } from "./lib/itrAccess";
+import { ReportFeedProvider } from "./hooks/useReportFeed";
 import type { UserRole } from "./types";
 
 const loadLoginPage = () => import("./pages/LoginPage");
@@ -157,7 +158,13 @@ export default function App() {
           </Route>
 
           <Route element={<ProtectedRoute allowedRoles={["director"]} />}>
-            <Route element={<AppLayout />}>
+            <Route
+              element={
+                <ReportFeedProvider>
+                  <AppLayout />
+                </ReportFeedProvider>
+              }
+            >
               <Route path="/director" element={<DirectorWorkspacePage />} />
               <Route path="/director/reports" element={<ItrLegacyRedirect section="reports" />} />
               <Route path="/director/team" element={<ItrLegacyRedirect section="team" />} />
@@ -169,7 +176,15 @@ export default function App() {
           </Route>
           </Routes>
         </Suspense>
-        <Toaster position="top-center" richColors />
+        <Toaster
+          position="top-center"
+          richColors
+          toastOptions={{
+            className: "text-sm",
+            style: { marginTop: "max(0.5rem, env(safe-area-inset-top))" }
+          }}
+          offset={{ top: "calc(0.5rem + env(safe-area-inset-top))" }}
+        />
       </AuthProvider>
     </ErrorBoundary>
   );

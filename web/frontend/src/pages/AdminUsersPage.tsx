@@ -27,6 +27,8 @@ export function AdminUsersPage() {
   const [apiEditRole, setApiEditRole] = useState<"isolator" | "director">("isolator");
   const [apiEditAllowedSections, setApiEditAllowedSections] = useState<ItrSection[]>(ALL_ITR_SECTIONS);
   const [apiEditPassword, setApiEditPassword] = useState("");
+  const [apiEditBrigadeNumber, setApiEditBrigadeNumber] = useState("");
+  const [apiEditIsBrigadeLeader, setApiEditIsBrigadeLeader] = useState(false);
   const [apiEditLoading, setApiEditLoading] = useState(false);
   const [apiUsers, setApiUsers] = useState<Profile[]>([]);
   const [apiUsersLoading, setApiUsersLoading] = useState(false);
@@ -123,6 +125,8 @@ export function AdminUsersPage() {
     setApiEditRole(user.role === "director" ? "director" : "isolator");
     setApiEditAllowedSections(resolvedAllowedSections);
     setApiEditPassword("");
+    setApiEditBrigadeNumber(user.brigadeNumber?.trim() || "");
+    setApiEditIsBrigadeLeader(Boolean(user.isBrigadeLeader));
   }
 
   function cancelApiEdit() {
@@ -132,6 +136,8 @@ export function AdminUsersPage() {
     setApiEditRole("isolator");
     setApiEditAllowedSections(ALL_ITR_SECTIONS);
     setApiEditPassword("");
+    setApiEditBrigadeNumber("");
+    setApiEditIsBrigadeLeader(false);
   }
 
   function toggleApiEditSection(section: ItrSection) {
@@ -171,7 +177,9 @@ export function AdminUsersPage() {
           requestedPosition: apiEditPosition.trim(),
           requestedRole: apiEditRole,
           allowedSections: apiEditRole === "director" ? apiEditAllowedSections : [],
-          password: apiEditPassword
+          password: apiEditPassword,
+          brigadeNumber: apiEditBrigadeNumber.trim(),
+          isBrigadeLeader: apiEditRole === "isolator" ? apiEditIsBrigadeLeader : false
         })
       });
       await loadApiUsers();
@@ -471,6 +479,28 @@ export function AdminUsersPage() {
                               <option value="director">ИТР</option>
                             </select>
                           </div>
+                          {apiEditRole === "isolator" ? (
+                            <>
+                              <div>
+                                <Label htmlFor={`api-edit-brigade-${user.uid}`}>Номер бригады</Label>
+                                <Input
+                                  id={`api-edit-brigade-${user.uid}`}
+                                  placeholder="Например: 12"
+                                  value={apiEditBrigadeNumber}
+                                  onChange={(e) => setApiEditBrigadeNumber(e.target.value)}
+                                />
+                              </div>
+                              <label className="flex items-center gap-2 text-sm">
+                                <input
+                                  type="checkbox"
+                                  className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 theme-dark:border-slate-600"
+                                  checked={apiEditIsBrigadeLeader}
+                                  onChange={(e) => setApiEditIsBrigadeLeader(e.target.checked)}
+                                />
+                                <span>Бригадир (может подавать отчёт за бригаду)</span>
+                              </label>
+                            </>
+                          ) : null}
                           {apiEditRole === "director" ? (
                             <div>
                               <Label>Доступ к вкладкам ИТР</Label>
