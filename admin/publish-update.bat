@@ -18,7 +18,7 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo Vvedite YES dlya publikacii:
+echo Dalee otkroetsya podtverzhdenie publikacii (vvedite YES)...
 call "%~dp0deploy.bat"
 set "RC=%ERRORLEVEL%"
 if "%RC%"=="0" echo Cherez 2-3 min: https://surovtsev2215.github.io/ i Ctrl+F5

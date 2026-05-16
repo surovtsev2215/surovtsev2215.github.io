@@ -1,5 +1,5 @@
 @echo off
-setlocal EnableExtensions
+setlocal EnableExtensions EnableDelayedExpansion
 call "%~dp0_env.bat"
 chcp 65001 >nul
 
@@ -155,12 +155,16 @@ if "%DRY_RUN%"=="1" (
 
 echo.
 echo Проверки прошли успешно. Сайт готов к безопасной публикации.
-set /p CONFIRM_PUSH="Введите YES для публикации в интернет: "
-if /I not "!CONFIRM_PUSH!"=="YES" (
-  call :fail "Publishing canceled by user"
-  goto :eof
-)
+set /p CONFIRM_PUSH="Введите YES для публикации (можно yes или y): "
+set "CONFIRM_PUSH=!CONFIRM_PUSH: =!"
+if /I "!CONFIRM_PUSH!"=="YES" goto :do_push
+if /I "!CONFIRM_PUSH!"=="Y" goto :do_push
+if /I "!CONFIRM_PUSH!"=="ДА" goto :do_push
+if /I "!CONFIRM_PUSH!"=="DA" goto :do_push
+call :fail "Публикация отменена (нужно ввести YES, yes или y)"
+goto :eof
 
+:do_push
 call :step "[9/11] Save rollback point"
 for /f %%I in ('git rev-parse HEAD') do set "LAST_COMMIT=%%I"
 echo %LAST_COMMIT%>"%ROOT_DIR%\last-stable-commit.txt"
