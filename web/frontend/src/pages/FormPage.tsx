@@ -389,6 +389,19 @@ export function FormPage() {
       scrollToFirstInvalidField();
       return;
     }
+
+    const hasWorkToSave =
+      hasShiftBlock ||
+      validShiftPipes.length > 0 ||
+      validPipelinePipes.length > 0 ||
+      validEquipment.length > 0 ||
+      validExtraEquipment.length > 0;
+    if (hasWorkToSave && !fullName.trim()) {
+      toast.error("Выберите блок производства работ в любой карточке трубы или оборудования");
+      scrollToFirstInvalidField();
+      return;
+    }
+
     setSubmitting(true);
     try {
       const reportId = crypto.randomUUID();

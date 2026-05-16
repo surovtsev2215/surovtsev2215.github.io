@@ -6,7 +6,8 @@ import { Button } from "../ui/button";
 
 export type PhotoDraft = { file: File; preview: string };
 
-const FILE_ACCEPT = "image/jpeg,image/png,image/webp,image/*";
+const FILE_ACCEPT =
+  "image/*,.heic,.heif,.jpg,.jpeg,.png,.gif,.webp,.bmp,.avif,.tif,.tiff";
 
 type PhotoAttachFieldProps = {
   id: string;
@@ -21,7 +22,7 @@ type PhotoAttachFieldProps = {
 export function PhotoAttachField({
   id,
   label,
-  hint = "Фото сохранятся только если карточка заполнена полностью. Лучше всего JPEG и PNG.",
+  hint = "Поддерживаются JPEG, PNG, HEIC, WebP, GIF и другие фото с телефона. Фото сохранятся только если карточка заполнена полностью.",
   maxPhotos,
   photos,
   onAdd,

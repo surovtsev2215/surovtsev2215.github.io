@@ -198,9 +198,10 @@ app.post(
     if (!file?.buffer?.length) {
       return res.status(400).json({ error: "Файл не получен." });
     }
-    const mime = String(file.mimetype || "");
-    if (!/^image\/(jpeg|png|webp)$/i.test(mime)) {
-      return res.status(400).json({ error: "Допустимы только изображения JPEG, PNG или WebP." });
+    const mimeRaw = String(file.mimetype || "").toLowerCase();
+    const mime = mimeRaw.startsWith("image/") ? mimeRaw : "image/jpeg";
+    if (!mime.startsWith("image/")) {
+      return res.status(400).json({ error: "Допустимы только файлы изображений." });
     }
     try {
       const url = await uploadPhotoBuffer(req.auth.uid, file.buffer, mime);

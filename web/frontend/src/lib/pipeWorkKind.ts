@@ -70,12 +70,21 @@ export function formatWorkSummaryLine(summary: ReportWorkSummary): string {
   return parts.length ? parts.join(" · ") : "—";
 }
 
-export function getPipeDisplayFields(pipe: PipeEntry): { label: string; value: string }[] {
+export function getPipeDisplayFields(
+  pipe: PipeEntry,
+  workBlock?: string
+): { label: string; value: string }[] {
   const kind = inferPipeWorkKind(pipe);
   const dia = pipe.diameter ? `${String(pipe.diameter).replace(".", ",")} мм` : "—";
   const vol = getReportedPipeVolume(pipe);
+  const blockField =
+    workBlock?.trim() ?
+      [{ label: "Блок производства работ", value: workBlock.trim() }]
+    : [];
+
   if (kind === "pipeline_demount") {
     return [
+      ...blockField,
       { label: "Трубопровод", value: pipe.siteName || "—" },
       { label: "Диаметр", value: dia },
       { label: "Объём демонтажа", value: `${vol} м²` }
@@ -83,6 +92,7 @@ export function getPipeDisplayFields(pipe: PipeEntry): { label: string; value: s
   }
   if (kind === "equipment_mount") {
     return [
+      ...blockField,
       { label: "Оборудование", value: pipe.siteName || "—" },
       { label: "Толщина ваты", value: pipe.insulationType || "—" },
       { label: "Толщина алюминия", value: pipe.jointsCount ? `${pipe.jointsCount} мм` : "—" },
@@ -91,12 +101,14 @@ export function getPipeDisplayFields(pipe: PipeEntry): { label: string; value: s
   }
   if (kind === "shift_foil") {
     return [
+      ...blockField,
       { label: "Линия", value: pipe.siteName || "—" },
       { label: "Покрывной слой", value: pipe.insulationType || "Фольга-ткань" },
       { label: "Выполненный объём", value: `${vol} п.м.` }
     ];
   }
   return [
+    ...blockField,
     { label: "Линия трубопровода", value: pipe.siteName || "—" },
     { label: "Диаметр", value: dia },
     { label: "Толщина ваты", value: pipe.insulationType || "—" },

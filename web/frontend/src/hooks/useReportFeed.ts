@@ -6,6 +6,10 @@ import {
   getReportTotalLength,
   matchesText
 } from "../lib/reportAggregations";
+import {
+  summarizeApprovedReports,
+  type ApprovedReportsSummary
+} from "../lib/approvedReportsSummary";
 import type { Report, ReportReviewStatus } from "../types";
 import { useItrPeriod } from "./useItrPeriod";
 
@@ -44,6 +48,8 @@ export interface ReportFeed {
   error: string | null;
   lastUpdatedAt: number | null;
   totals: ReportFeedAggregates;
+  /** Согласованные отчёты за выбранный период (независимо от фильтра статуса в списке). */
+  approvedInPeriod: ApprovedReportsSummary;
   refresh: () => void;
 }
 
@@ -191,6 +197,16 @@ export function useReportFeed(
     };
   }, [rows]);
 
+  const approvedInPeriod = useMemo(() => {
+    const approved = rowsAll.filter((r) => {
+      if (statusOf(r) !== "approved") return false;
+      if (range.from && r.date < range.from) return false;
+      if (range.to && r.date > range.to) return false;
+      return true;
+    });
+    return summarizeApprovedReports(approved);
+  }, [rowsAll, range.from, range.to]);
+
   return {
     rows,
     rowsAll,
@@ -198,6 +214,7 @@ export function useReportFeed(
     error,
     lastUpdatedAt,
     totals,
+    approvedInPeriod,
     refresh: () => setVersion((v) => v + 1)
   };
 }

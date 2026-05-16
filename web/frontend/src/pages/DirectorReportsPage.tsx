@@ -15,6 +15,8 @@ import { formatWorkSummaryLine, getReportWorkSummary } from "../lib/pipeWorkKind
 import { formatFullNameForDisplay } from "../lib/normalizeFullName";
 import { exportExcel, exportPdf } from "../lib/exportReports";
 import { PeriodSwitcher } from "../components/itr/PeriodSwitcher";
+import { ApprovedReportsOverview } from "../components/itr/ApprovedReportsOverview";
+import { formatItrPeriodLabel } from "../lib/approvedReportsSummary";
 import type { ReportReviewStatus } from "../types";
 
 const STATUS_LABELS: Record<ReportReviewStatus, string> = {
@@ -42,7 +44,7 @@ export function DirectorReportsPage() {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const usersDirectory = useUsersDirectory();
-  const { preset, setPreset } = useItrPeriod();
+  const { preset, setPreset, range } = useItrPeriod();
   const [exporting, setExporting] = useState<null | "excel" | "pdf">(null);
 
   const userFilter = searchParams.get("user") ?? "";
@@ -187,6 +189,14 @@ export function DirectorReportsPage() {
           </div>
         )}
       </div>
+
+      <ApprovedReportsOverview
+        summary={reports.approvedInPeriod}
+        periodLabel={formatItrPeriodLabel(preset, range)}
+        loading={reports.loading}
+        filterActive={statusFilter === "approved"}
+        onShowApproved={() => setParam("status", "approved")}
+      />
 
       {reports.loading ? (
         <div className="space-y-2">

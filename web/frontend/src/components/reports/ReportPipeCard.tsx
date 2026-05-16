@@ -40,14 +40,16 @@ function ReportPhotoThumb({
 export const ReportPipeCard = memo(function ReportPipeCard({
   pipe,
   index,
+  workBlock,
   onOpenPhoto
 }: {
   pipe: PipeEntry;
   index: number;
+  workBlock?: string;
   onOpenPhoto: (url: string) => void;
 }) {
   const kind = inferPipeWorkKind(pipe);
-  const fields = getPipeDisplayFields(pipe);
+  const fields = getPipeDisplayFields(pipe, workBlock);
   const titlePrefix =
     kind === "equipment_mount"
       ? "Оборудование"

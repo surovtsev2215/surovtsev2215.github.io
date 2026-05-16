@@ -4,11 +4,7 @@ import { ClipboardList, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../contexts/AuthContext";
 import { fetchReportById } from "../lib/reportStore";
-import {
-  formatLineNames,
-  getReportPipeCount,
-  getReportTotalLength
-} from "../lib/reportAggregations";
+import { formatLineNames } from "../lib/reportAggregations";
 import { formatWorkSummaryLine, getReportWorkSummary, groupPipesByWorkKind, PIPE_WORK_LABELS } from "../lib/pipeWorkKind";
 import { ReportPipeCard } from "../components/reports/ReportPipeCard";
 import type { PipeWorkKind } from "../types";
@@ -167,29 +163,16 @@ export function ReportDetailPage() {
   const backTo =
     role === "admin" ? "/admin/users" : role === "director" ? directorBack ?? "/director/reports" : "/history";
 
-  const pipeCount = getReportPipeCount(report);
-  const totalLen = getReportTotalLength(report);
   const status = (report.status ?? "submitted") as ReportReviewStatus;
   const canReview = (role === "director" || role === "admin") && isApiConfigured;
   const canTask = canReview;
   const authorDisplay = author?.fullName ? formatFullNameForDisplay(author.fullName) : report.userEmail;
   const reportLabel = `${report.date} · ${formatLineNames(report)}`;
 
-  let shiftValueText = "—";
-  if (report.shiftWork && report.shiftWork.value > 0) {
-    shiftValueText =
-      report.shiftWork.type === "hours"
-        ? `${report.shiftWork.value} дн`
-        : `${report.shiftWork.value} ₽`;
-  }
-
-  const commonFields: { label: string; value: string }[] = [
-    { label: "Дата", value: report.date },
-    { label: "Блок производства работ", value: report.fullName || "—" },
-    { label: "Учёт смены", value: shiftValueText },
-    { label: "Труб в смене", value: `${pipeCount} (Σ ${totalLen.toFixed(1)} м)` },
-    { label: "Служебный email", value: report.userEmail }
-  ];
+  const hasShiftExtras =
+    !!report.shiftWorkDescription?.trim() ||
+    !!report.shiftWorkPhotoUrls?.length ||
+    !!report.shiftWorkPipes?.length;
 
   return (
     <div className="page-stack">
@@ -288,19 +271,12 @@ export function ReportDetailPage() {
         </Card>
       )}
 
-      <Card className="soft-ring surface-floating animate-in-up">
-        <CardHeader>
-          <CardTitle>Общие данные</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <dl className="grid gap-3 sm:grid-cols-2">
-            {commonFields.map(({ label, value }) => (
-              <div key={label}>
-                <dt className="text-xs text-slate-500 theme-dark:text-slate-400">{label}</dt>
-                <dd className="text-sm font-medium">{value}</dd>
-              </div>
-            ))}
-          </dl>
+      {hasShiftExtras ? (
+        <Card className="soft-ring surface-floating animate-in-up">
+          <CardHeader>
+            <CardTitle className="text-base">Работа за смену</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
           {(report.shiftWorkDescription || report.shiftWorkPhotoUrls?.length) && (
             <div className="space-y-3">
               {!!report.shiftWorkDescription && (
@@ -342,8 +318,9 @@ export function ReportDetailPage() {
               </ul>
             </div>
           )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {(() => {
         const grouped = groupPipesByWorkKind(report.pipes);
@@ -367,6 +344,7 @@ export function ReportDetailPage() {
                       key={pipe.id || idx}
                       pipe={pipe}
                       index={idx}
+                      workBlock={report.fullName}
                       onOpenPhoto={openLightbox}
                     />
                   ))}

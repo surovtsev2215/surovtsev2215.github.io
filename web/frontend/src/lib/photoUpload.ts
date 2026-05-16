@@ -15,21 +15,29 @@ export type PhotoAddResult = {
 
 type DrawableSource = ImageBitmap | HTMLImageElement;
 
+const IMAGE_EXT =
+  /\.(jpe?g|png|gif|webp|bmp|svg|avif|heic|heif|tiff?|jfif|dng)$/i;
+
+function fileName(file: File): string {
+  return (file.name || "").toLowerCase();
+}
+
 function isHeicFile(file: File): boolean {
   const mime = (file.type || "").toLowerCase();
-  const name = (file.name || "").toLowerCase();
+  const name = fileName(file);
   return (
-    mime === "image/heic" ||
-    mime === "image/heif" ||
-    mime === "image/heic-sequence" ||
+    mime.includes("heic") ||
+    mime.includes("heif") ||
     name.endsWith(".heic") ||
     name.endsWith(".heif")
   );
 }
 
-function isDirectReadableImage(file: File): boolean {
+function looksLikeImage(file: File): boolean {
   const mime = (file.type || "").toLowerCase();
-  return mime === "image/jpeg" || mime === "image/png" || mime === "image/webp";
+  if (mime.startsWith("image/")) return true;
+  if (IMAGE_EXT.test(fileName(file))) return true;
+  return !mime || mime === "application/octet-stream";
 }
 
 function sourceSize(source: DrawableSource): { w: number; h: number } {
@@ -42,7 +50,7 @@ function sourceSize(source: DrawableSource): { w: number; h: number } {
 async function heicToJpegBlob(file: File): Promise<Blob> {
   const mod = await import("heic2any");
   const heic2any = mod.default;
-  const converted = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.82 });
+  const converted = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.85 });
   const blob = Array.isArray(converted) ? converted[0] : converted;
   if (!(blob instanceof Blob)) throw new Error("HEIC convert failed");
   return blob;
@@ -71,26 +79,47 @@ async function decodeBlobToSource(blob: Blob): Promise<DrawableSource> {
 }
 
 async function decodeFileToSource(file: File): Promise<DrawableSource> {
+  const errors: string[] = [];
+
   try {
     return await createImageBitmap(file);
-  } catch {
-    /* fall through */
-  }
-
-  if (isHeicFile(file)) {
-    const jpegBlob = await heicToJpegBlob(file);
-    return decodeBlobToSource(jpegBlob);
+  } catch (e) {
+    errors.push(e instanceof Error ? e.message : "bitmap");
   }
 
   const url = URL.createObjectURL(file);
   try {
     return await loadImageElement(url);
+  } catch (e) {
+    errors.push(e instanceof Error ? e.message : "img");
   } finally {
     URL.revokeObjectURL(url);
   }
+
+  if (isHeicFile(file)) {
+    try {
+      const jpegBlob = await heicToJpegBlob(file);
+      return decodeBlobToSource(jpegBlob);
+    } catch (e) {
+      errors.push(e instanceof Error ? e.message : "heic");
+    }
+  }
+
+  try {
+    const jpegBlob = await heicToJpegBlob(file);
+    return decodeBlobToSource(jpegBlob);
+  } catch {
+    /* not HEIC */
+  }
+
+  throw new Error(errors.join("; ") || "decode failed");
 }
 
-async function drawSourceToJpegBlob(source: DrawableSource, maxSide: number): Promise<Blob> {
+async function drawSourceToJpegBlob(
+  source: DrawableSource,
+  maxSide: number,
+  quality: number
+): Promise<Blob> {
   const { w: srcW, h: srcH } = sourceSize(source);
   if (!srcW || !srcH) throw new Error("Пустое изображение");
 
@@ -105,43 +134,45 @@ async function drawSourceToJpegBlob(source: DrawableSource, maxSide: number): Pr
   if (!ctx) throw new Error("Canvas недоступен");
   ctx.drawImage(source, 0, 0, w, h);
 
-  if (source instanceof ImageBitmap) source.close();
-
   return await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
       (blob) => (blob ? resolve(blob) : reject(new Error("Не удалось сжать фото"))),
       "image/jpeg",
-      0.82
+      quality
     );
   });
 }
 
-async function fileToJpegBlob(file: File, maxSide = 1024): Promise<Blob> {
-  if (isDirectReadableImage(file) && file.size <= MAX_PHOTO_BYTES && file.size < 800_000) {
-    try {
-      const source = await decodeFileToSource(file);
-      return await drawSourceToJpegBlob(source, maxSide);
-    } catch {
-      /* use full pipeline below */
-    }
-  }
-
-  if (isHeicFile(file)) {
-    const jpegBlob = await heicToJpegBlob(file);
-    const source = await decodeBlobToSource(jpegBlob);
-    return drawSourceToJpegBlob(source, maxSide);
+async function fileToJpegBlob(file: File): Promise<Blob> {
+  if (!looksLikeImage(file)) {
+    throw new Error("Выбранный файл не является изображением");
   }
 
   const source = await decodeFileToSource(file);
-  return drawSourceToJpegBlob(source, maxSide);
+  const attempts: Array<{ maxSide: number; quality: number }> = [
+    { maxSide: 1600, quality: 0.85 },
+    { maxSide: 1200, quality: 0.82 },
+    { maxSide: 1024, quality: 0.78 },
+    { maxSide: 800, quality: 0.72 }
+  ];
+
+  let last: Blob | null = null;
+  try {
+    for (const { maxSide, quality } of attempts) {
+      const blob = await drawSourceToJpegBlob(source, maxSide, quality);
+      last = blob;
+      if (blob.size <= MAX_PHOTO_BYTES) return blob;
+    }
+
+    if (last && last.size <= MAX_PHOTO_BYTES * 1.05) return last;
+    throw new Error("Фото слишком большое после сжатия (макс. 3 МБ).");
+  } finally {
+    if (source instanceof ImageBitmap) source.close();
+  }
 }
 
-async function compressImage(file: File, maxSide = 1024): Promise<Blob> {
-  const blob = await fileToJpegBlob(file, maxSide);
-  if (blob.size > MAX_PHOTO_BYTES) {
-    throw new Error("Фото слишком большое после сжатия (макс. 3 МБ).");
-  }
-  return blob;
+async function compressImage(file: File): Promise<Blob> {
+  return fileToJpegBlob(file);
 }
 
 function blobToDataUrl(blob: Blob): Promise<string> {
@@ -155,7 +186,7 @@ function blobToDataUrl(blob: Blob): Promise<string> {
 
 /** JPEG data URL for form preview. */
 export async function makePhotoPreview(file: File): Promise<string> {
-  const blob = await compressImage(file, 1024);
+  const blob = await compressImage(file);
   return blobToDataUrl(blob);
 }
 
@@ -171,6 +202,10 @@ export async function preparePhotoItems(
   let failed = 0;
 
   for (const file of toProcess) {
+    if (!looksLikeImage(file)) {
+      failed += 1;
+      continue;
+    }
     try {
       const preview = await makePhotoPreview(file);
       items.push({ file, preview });
@@ -201,7 +236,7 @@ export function formatPhotoAddToast(
     return {
       type: "error",
       message:
-        "Не удалось открыть фото. Сохраните как JPEG/PNG, используйте «С камеры» или отключите HEIC в настройках iPhone."
+        "Не удалось открыть фото. Попробуйте другое изображение или снимок через «С камеры»."
     };
   }
 
@@ -211,9 +246,7 @@ export function formatPhotoAddToast(
 
   const parts = [`Добавлено ${added} из ${totalSelected}`];
   if (failed > 0) {
-    parts.push(
-      `${failed} не открылись — сохраните как JPEG/PNG или снимите через «С камеры»`
-    );
+    parts.push(`${failed} не открылись — попробуйте JPEG/PNG или «С камеры»`);
   }
   if (skippedByLimit > 0) {
     parts.push(`ещё ${skippedByLimit} не влезли (лимит на карточку)`);
@@ -252,9 +285,9 @@ export async function isRemotePhotoStorageAvailable(): Promise<boolean> {
 }
 
 async function uploadOneToApi(file: File): Promise<string> {
-  const blob = await compressImage(file, 1024);
+  const blob = await compressImage(file);
   const body = new FormData();
-  body.append("file", new File([blob], file.name || "photo.jpg", { type: "image/jpeg" }));
+  body.append("file", new File([blob], "photo.jpg", { type: "image/jpeg" }));
 
   const token = getApiToken();
   const res = await fetch(buildApiUrl("/api/uploads"), {
@@ -277,7 +310,7 @@ async function uploadOneToApi(file: File): Promise<string> {
 }
 
 async function uploadOneLocal(file: File): Promise<string> {
-  const blob = await compressImage(file, 1024);
+  const blob = await compressImage(file);
   return blobToDataUrl(blob);
 }
 
