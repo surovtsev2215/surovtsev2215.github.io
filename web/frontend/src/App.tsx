@@ -3,6 +3,7 @@ import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { Toaster } from "sonner";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { AppLayout } from "./components/layout/AppLayout";
+import { ErrorBoundary } from "./components/feedback/ErrorBoundary";
 import { Skeleton } from "./components/ui/skeleton";
 import { buildItrAccess, type ItrSection } from "./lib/itrAccess";
 import type { UserRole } from "./types";
@@ -125,10 +126,11 @@ function RoutePrefetcher() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <RoutePrefetcher />
-      <Suspense fallback={<AuthLoadingSkeleton />}>
-        <Routes>
+    <ErrorBoundary>
+      <AuthProvider>
+        <RoutePrefetcher />
+        <Suspense fallback={<AuthLoadingSkeleton />}>
+          <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<Navigate to="/login" replace />} />
 
@@ -165,9 +167,10 @@ export default function App() {
               <Route path="/director/profile" element={<ItrLegacyRedirect section="profile" />} />
             </Route>
           </Route>
-        </Routes>
-      </Suspense>
-      <Toaster position="top-center" richColors />
-    </AuthProvider>
+          </Routes>
+        </Suspense>
+        <Toaster position="top-center" richColors />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

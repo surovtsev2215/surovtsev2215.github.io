@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { preparePhotoItems, revokePhotoPreview, type PhotoAddResult } from "../lib/photoUpload";
 
 export interface PipeDraft {
@@ -36,6 +36,8 @@ export function usePipeList(options?: { defaultJointsCount?: number; maxPhotosPe
   const defaultJointsCount = options?.defaultJointsCount ?? 1;
   const maxPhotosPerPipe = options?.maxPhotosPerPipe ?? 10;
   const [pipes, setPipes] = useState<PipeDraft[]>([]);
+  const pipesRef = useRef(pipes);
+  pipesRef.current = pipes;
 
   function updatePipe(localId: string, patch: Partial<PipeDraft>) {
     setPipes((prev) => prev.map((p) => (p.localId === localId ? { ...p, ...patch } : p)));
@@ -56,12 +58,8 @@ export function usePipeList(options?: { defaultJointsCount?: number; maxPhotosPe
   async function addPhotos(localId: string, files: FileList | null): Promise<PhotoAddResult> {
     if (!files?.length) return emptyPhotoResult;
 
-    let room = 0;
-    setPipes((prev) => {
-      const pipe = prev.find((p) => p.localId === localId);
-      room = pipe ? Math.max(0, maxPhotosPerPipe - pipe.photos.length) : 0;
-      return prev;
-    });
+    const pipe = pipesRef.current.find((p) => p.localId === localId);
+    const room = pipe ? Math.max(0, maxPhotosPerPipe - pipe.photos.length) : 0;
     if (room <= 0) {
       return {
         added: 0,

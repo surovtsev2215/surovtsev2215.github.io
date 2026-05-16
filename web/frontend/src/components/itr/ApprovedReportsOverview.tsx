@@ -55,29 +55,19 @@ export function ApprovedReportsOverview({
             }
           />
           <StatTile
-            tone="sky"
-            label="Карточек работ"
-            value={String(summary.pipeCardsCount)}
-            hint="трубы и оборудование"
-          />
-          <StatTile
             tone="violet"
-            label="Монтаж"
+            label="ТИ труб"
             value={summary.pipelineMountM2 > 0 ? `${summary.pipelineMountM2} м²` : "—"}
           />
           <StatTile
             tone="amber"
-            label="Демонтаж / оборуд."
-            value={
-              summary.demountM2 > 0 || summary.equipmentMountM2 > 0
-                ? `${summary.demountM2 + summary.equipmentMountM2} м²`
-                : "—"
-            }
-            hint={
-              summary.demountM2 > 0 && summary.equipmentMountM2 > 0
-                ? `дем. ${summary.demountM2} · оборуд. ${summary.equipmentMountM2}`
-                : undefined
-            }
+            label="Демонтаж"
+            value={summary.demountM2 > 0 ? `${summary.demountM2} м²` : "—"}
+          />
+          <StatTile
+            tone="sky"
+            label="ТИ оборудования"
+            value={summary.equipmentMountM2 > 0 ? `${summary.equipmentMountM2} м²` : "—"}
           />
         </div>
 

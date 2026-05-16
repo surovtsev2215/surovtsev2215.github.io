@@ -10,7 +10,6 @@ export interface ApprovedReportsSummary {
   demountM2: number;
   foilPm: number;
   photoCount: number;
-  pipeCardsCount: number;
   topBlocks: Array<{ block: string; count: number }>;
 }
 
@@ -22,7 +21,6 @@ const emptySummary: ApprovedReportsSummary = {
   demountM2: 0,
   foilPm: 0,
   photoCount: 0,
-  pipeCardsCount: 0,
   topBlocks: []
 };
 
@@ -34,7 +32,6 @@ export function summarizeApprovedReports(reports: Report[]): ApprovedReportsSumm
   let demountM2 = 0;
   let foilPm = 0;
   let photoCount = 0;
-  let pipeCardsCount = 0;
   const blocks: Record<string, number> = {};
 
   for (const r of reports) {
@@ -44,7 +41,6 @@ export function summarizeApprovedReports(reports: Report[]): ApprovedReportsSumm
     demountM2 += s.demountM2;
     foilPm += s.foilPm;
     photoCount += s.photoCount;
-    pipeCardsCount += r.pipes.length;
 
     const block = r.fullName?.trim();
     if (block) blocks[block] = (blocks[block] ?? 0) + 1;
@@ -63,16 +59,15 @@ export function summarizeApprovedReports(reports: Report[]): ApprovedReportsSumm
     demountM2: Number(demountM2.toFixed(2)),
     foilPm: Number(foilPm.toFixed(2)),
     photoCount,
-    pipeCardsCount,
     topBlocks
   };
 }
 
 export function formatApprovedVolumeLine(summary: ApprovedReportsSummary): string {
   const parts: string[] = [];
-  if (summary.pipelineMountM2 > 0) parts.push(`монтаж ${summary.pipelineMountM2} м²`);
+  if (summary.pipelineMountM2 > 0) parts.push(`ТИ труб ${summary.pipelineMountM2} м²`);
   if (summary.demountM2 > 0) parts.push(`демонтаж ${summary.demountM2} м²`);
-  if (summary.equipmentMountM2 > 0) parts.push(`оборуд. ${summary.equipmentMountM2} м²`);
+  if (summary.equipmentMountM2 > 0) parts.push(`ТИ оборуд. ${summary.equipmentMountM2} м²`);
   if (summary.foilPm > 0) parts.push(`фольга ${summary.foilPm} п.м.`);
   return parts.length ? parts.join(" · ") : "объёмы не указаны";
 }

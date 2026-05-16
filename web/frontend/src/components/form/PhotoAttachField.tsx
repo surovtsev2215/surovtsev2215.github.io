@@ -22,7 +22,7 @@ type PhotoAttachFieldProps = {
 export function PhotoAttachField({
   id,
   label,
-  hint = "Поддерживаются JPEG, PNG, HEIC, WebP, GIF и другие фото с телефона. Фото сохранятся только если карточка заполнена полностью.",
+  hint = "JPEG, PNG, HEIC, WebP и др. Если много фото — добавляйте по 2–3 за раз. Сохраняются при полностью заполненной карточке.",
   maxPhotos,
   photos,
   onAdd,

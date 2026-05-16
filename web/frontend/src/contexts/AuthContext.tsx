@@ -64,12 +64,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setProfile(fresh);
           setRole(fresh.role);
           setUser({ uid: fresh.uid });
-        } catch {
-          setApiToken("");
-          localStorage.removeItem(API_PROFILE_KEY);
-          setProfile(null);
-          setRole(null);
-          setUser(null);
+        } catch (error) {
+          if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+            setApiToken("");
+            localStorage.removeItem(API_PROFILE_KEY);
+            setProfile(null);
+            setRole(null);
+            setUser(null);
+          }
         } finally {
           setLoading(false);
         }

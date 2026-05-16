@@ -310,8 +310,13 @@ export function FormPage() {
 
   async function runPhotoAdd(task: () => Promise<PhotoAddResult>, fileCount: number) {
     if (fileCount > 1) toast.loading("Обработка фото…", { id: "photo-process" });
-    const result = await task();
-    applyPhotoAddToast(result);
+    try {
+      const result = await task();
+      applyPhotoAddToast(result);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Не удалось обработать фото";
+      toast.error(msg, { id: "photo-process" });
+    }
   }
 
   async function handlePipePhotosAdd(
@@ -404,6 +409,7 @@ export function FormPage() {
 
     setSubmitting(true);
     try {
+      toast.loading("Подготовка отчёта и фото…", { id: "submit-report" });
       const reportId = crypto.randomUUID();
       const userId = profile?.uid ?? "demo-isolator";
       const userEmail = profile?.email ?? syntheticEmailForUid(userId);

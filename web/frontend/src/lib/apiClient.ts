@@ -2,7 +2,8 @@ import { buildApiUrl, isApiConfigured } from "./runtimeConfig";
 
 const TOKEN_KEY = "pto-api-token";
 const REQUEST_TIMEOUT_MS = 12000;
-const REPORT_POST_TIMEOUT_MS = 60000;
+const REPORT_POST_TIMEOUT_MS = 120000;
+const UPLOAD_TIMEOUT_MS = 90000;
 
 export type ApiRequestInit = RequestInit & { timeoutMs?: number };
 const inFlightGetRequests = new Map<string, Promise<unknown>>();
@@ -62,11 +63,21 @@ export async function apiRequest<T>(pathname: string, init?: ApiRequestInit): Pr
   }
 
   const headers = new Headers(fetchInit.headers || {});
-  if (!headers.has("Content-Type") && fetchInit.body) headers.set("Content-Type", "application/json");
+  if (
+    !headers.has("Content-Type") &&
+    fetchInit.body &&
+    !(fetchInit.body instanceof FormData)
+  ) {
+    headers.set("Content-Type", "application/json");
+  }
   if (token) headers.set("Authorization", `Bearer ${token}`);
   const timeoutMs =
     timeoutOverride ??
-    (method === "POST" && pathname.startsWith("/api/reports") ? REPORT_POST_TIMEOUT_MS : REQUEST_TIMEOUT_MS);
+    (method === "POST" && pathname.startsWith("/api/uploads")
+      ? UPLOAD_TIMEOUT_MS
+      : method === "POST" && pathname.startsWith("/api/reports")
+        ? REPORT_POST_TIMEOUT_MS
+        : REQUEST_TIMEOUT_MS);
 
   const doRequest = async () => {
     const controller = new AbortController();
@@ -118,8 +129,6 @@ export async function apiRequest<T>(pathname: string, init?: ApiRequestInit): Pr
     inFlightGetRequests.set(requestKey, requestPromise as Promise<unknown>);
     try {
       return await requestPromise;
-    } catch {
-      throw new Error("Ошибка сети при запросе к API.");
     } finally {
       inFlightGetRequests.delete(requestKey);
     }

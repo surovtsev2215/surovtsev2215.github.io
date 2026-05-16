@@ -467,10 +467,10 @@ export function AppLayout() {
             </Button>
           </div>
         </div>
-        {isDirector && !isApiConfigured && (
+        {!isApiConfigured && (
           <div className="mx-auto max-w-7xl px-3 pb-2 sm:px-5">
-            <div className="rounded-xl border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-800 theme-dark:border-amber-700/70 theme-dark:bg-amber-900/30 theme-dark:text-amber-200">
-              Расширенный режим ИТР (Команда, Задачи, Согласование) доступен только в локальной версии.
+            <div className="rounded-xl border border-rose-200 bg-rose-50/90 px-3 py-2 text-xs text-rose-900 theme-dark:border-rose-800 theme-dark:bg-rose-950/40 theme-dark:text-rose-100">
+              Сайт не подключён к серверу — отчёты и фото не сохранятся. Обратитесь к администратору.
             </div>
           </div>
         )}

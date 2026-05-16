@@ -37,7 +37,8 @@ export async function createReport(report: Report) {
   if (isApiConfigured) {
     await apiRequest<{ report: Report }>("/api/reports", {
       method: "POST",
-      body: JSON.stringify(report)
+      body: JSON.stringify(report),
+      timeoutMs: 120000
     });
     reportsCache = null;
     return;
