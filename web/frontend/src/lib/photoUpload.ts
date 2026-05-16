@@ -1,3 +1,11 @@
+import { getApiToken } from "./apiClient";
+import { buildApiUrl, isApiConfigured } from "./runtimeConfig";
+
+const MAX_PHOTO_BYTES = 3 * 1024 * 1024;
+const MAX_PHOTOS_PER_REPORT = 15;
+
+let photoStorageRemote: boolean | null = null;
+
 async function compressImage(file: File, maxSide = 1024): Promise<Blob> {
   const image = await createImageBitmap(file);
   const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
@@ -25,16 +33,81 @@ function blobToDataUrl(blob: Blob): Promise<string> {
   });
 }
 
+export async function isRemotePhotoStorageAvailable(): Promise<boolean> {
+  if (!isApiConfigured) return false;
+  if (photoStorageRemote != null) return photoStorageRemote;
+  try {
+    const res = await fetch(buildApiUrl("/api/health"));
+    if (!res.ok) {
+      photoStorageRemote = false;
+      return false;
+    }
+    const data = (await res.json()) as { photoStorage?: string };
+    photoStorageRemote = data.photoStorage === "ok";
+    return photoStorageRemote;
+  } catch {
+    photoStorageRemote = false;
+    return false;
+  }
+}
+
+async function uploadOneToApi(file: File): Promise<string> {
+  const blob = await compressImage(file, 1024);
+  if (blob.size > MAX_PHOTO_BYTES) {
+    throw new Error("Фото слишком большое после сжатия (макс. 3 МБ).");
+  }
+  const body = new FormData();
+  body.append("file", new File([blob], file.name || "photo.jpg", { type: "image/jpeg" }));
+
+  const token = getApiToken();
+  const res = await fetch(buildApiUrl("/api/uploads"), {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body
+  });
+  const raw = await res.text();
+  let data: { url?: string; error?: string } = {};
+  try {
+    data = JSON.parse(raw) as typeof data;
+  } catch {
+    /* noop */
+  }
+  if (!res.ok) {
+    throw new Error(data.error || `Ошибка загрузки фото (${res.status})`);
+  }
+  if (!data.url) throw new Error("Сервер не вернул URL фото");
+  return data.url;
+}
+
+async function uploadOneLocal(file: File): Promise<string> {
+  const blob = await compressImage(file, 1024);
+  if (blob.size > MAX_PHOTO_BYTES) {
+    throw new Error("Фото слишком большое (макс. 3 МБ).");
+  }
+  return blobToDataUrl(blob);
+}
+
 export async function uploadReportPhotos(
   _userId: string,
   _reportId: string,
   files: File[],
   _fallbackUrls: string[]
-) {
+): Promise<string[]> {
+  if (files.length > MAX_PHOTOS_PER_REPORT) {
+    throw new Error(`Максимум ${MAX_PHOTOS_PER_REPORT} фото на отчёт.`);
+  }
+
+  const useRemote = await isRemotePhotoStorageAvailable();
   const out: string[] = [];
-  for (const file of files) {
-    const blob = await compressImage(file, 1024);
-    out.push(await blobToDataUrl(blob));
+
+  for (let i = 0; i < files.length; i += 1) {
+    try {
+      const url = useRemote ? await uploadOneToApi(files[i]) : await uploadOneLocal(files[i]);
+      out.push(url);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "ошибка";
+      throw new Error(`Фото ${i + 1}: ${msg}`);
+    }
   }
   return out;
 }

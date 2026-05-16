@@ -177,6 +177,29 @@ if errorlevel 1 (
   goto :eof
 )
 
+call :step "[10b/11] Build site on GitHub Pages (Actions)"
+where gh >nul 2>nul
+if errorlevel 1 (
+  echo [WARN] gh CLI ne najden. Otkrojte GitHub - Actions - Deploy Frontend - Run workflow.
+) else (
+  gh workflow run "Deploy Frontend to GitHub Pages" --ref "%PUBLISH_BRANCH%" >> "%LOG_FILE%" 2>&1
+  if errorlevel 1 (
+    call :fail "Ne udalos zapustit sborku sayta na GitHub"
+    goto :eof
+  )
+  for /f "delims=" %%R in ('gh run list --workflow "Deploy Frontend to GitHub Pages" --branch "%PUBLISH_BRANCH%" --limit 1 --json databaseId --jq ".[0].databaseId"') do set "GH_RUN_ID=%%R"
+  if defined GH_RUN_ID (
+    echo Ozhidanie sborki GitHub Pages (1-2 min)...
+    gh run watch !GH_RUN_ID! --exit-status >> "%LOG_FILE%" 2>&1
+    if errorlevel 1 (
+      call :fail "Sbornka sayta na GitHub ne proshla. Sm. Actions v repozitorii."
+      goto :eof
+    )
+  ) else (
+    echo [WARN] Ne udalos otsledit zapusk Actions. Proverite vruchnuyu cherez 2 min.
+  )
+)
+
 call :step "[11/11] Final git status"
 git status --short >> "%LOG_FILE%" 2>&1
 
@@ -187,7 +210,8 @@ echo Log file: "%LOG_FILE%"
 if "%DRY_RUN%"=="1" (
   echo Dry run mode was used. No changes were published.
 ) else (
-  echo Changes published. Users will receive update after host sync.
+  echo Izmeneniya otpravleny. Sayt obnovitsya posle sborki GitHub Pages.
+  echo Otkrojte https://surovtsev2215.github.io/ i nazhmite Ctrl+F5.
 )
 echo.
 if not "%DRY_RUN%"=="1" (

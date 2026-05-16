@@ -10,6 +10,7 @@ import { buildItrAccess, itrSectionMeta, type ItrPreloadKey, type ItrSection } f
 import { isApiConfigured } from "../../lib/runtimeConfig";
 import { useReportFeed } from "../../hooks/useReportFeed";
 import { useTaskFeed } from "../../hooks/useTaskFeed";
+import { SiteVersionFooter } from "./SiteVersionFooter";
 
 type StaticPreload =
   | "form"
@@ -394,7 +395,7 @@ export function AppLayout() {
   );
 
   return (
-    <div className="min-h-screen pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
+    <div className="min-h-screen pb-[calc(7.25rem+env(safe-area-inset-bottom))] md:pb-0">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-lg focus:bg-white focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-slate-900"
@@ -514,6 +515,8 @@ export function AppLayout() {
           </Suspense>
         </main>
       </div>
+
+      <SiteVersionFooter className="mx-auto max-w-7xl md:px-5" />
 
       {!isDirector && (
         <nav

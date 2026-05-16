@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ShieldCheck } from "lucide-react";
+import { Camera, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { useReportFeed } from "../hooks/useReportFeed";
 import { useUsersDirectory } from "../hooks/useUsersDirectory";
@@ -11,11 +11,8 @@ import { Card, CardContent } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Skeleton } from "../components/ui/skeleton";
 import { PeriodSwitcher } from "../components/itr/PeriodSwitcher";
-import {
-  formatLineNames,
-  getReportPipeCount,
-  getReportTotalLength
-} from "../lib/reportAggregations";
+import { formatLineNames } from "../lib/reportAggregations";
+import { formatWorkSummaryLine, getReportWorkSummary } from "../lib/pipeWorkKind";
 import { formatFullNameForDisplay } from "../lib/normalizeFullName";
 import { cn } from "../lib/utils";
 
@@ -159,8 +156,7 @@ export function DirectorApprovalsPage() {
           {rows.map((r) => {
             const overdue = isOverdue(r.createdAt);
             const author = usersDirectory.byUid(r.userId);
-            const totalLen = getReportTotalLength(r);
-            const pipeCount = getReportPipeCount(r);
+            const workSummary = getReportWorkSummary(r);
             const isSelected = r.id ? selected.has(r.id) : false;
             return (
               <Card
@@ -186,6 +182,18 @@ export function DirectorApprovalsPage() {
                           {r.date} · {author?.fullName ? formatFullNameForDisplay(author.fullName) : r.userEmail}
                           {author?.position ? ` · ${author.position}` : ""}
                         </div>
+                        <div className="mt-1 text-[11px] font-medium text-slate-700 theme-dark:text-slate-200">
+                          Блок {r.fullName || "—"}
+                        </div>
+                        <div className="mt-0.5 text-[11px] text-slate-600 theme-dark:text-slate-300">
+                          {formatWorkSummaryLine(workSummary)}
+                          {workSummary.photoCount > 0 ? (
+                            <span className="ml-1 inline-flex items-center gap-0.5 text-sky-700 theme-dark:text-sky-300">
+                              <Camera className="h-3 w-3" aria-hidden />
+                              {workSummary.photoCount}
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
                     </label>
                     {overdue && (
@@ -196,7 +204,7 @@ export function DirectorApprovalsPage() {
                   </div>
                   <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600 theme-dark:text-slate-300">
                     <span>
-                      Блок {r.fullName || "—"} · {pipeCount} {pipeCount === 1 ? "труба" : "труб(ы)"} · Σ {totalLen.toFixed(1)} м
+                      {formatWorkSummaryLine(workSummary)}
                     </span>
                     <Button
                       type="button"

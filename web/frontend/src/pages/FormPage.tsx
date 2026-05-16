@@ -22,6 +22,14 @@ import { Textarea } from "../components/ui/textarea";
 import { Card, CardContent } from "../components/ui/card";
 import { usePipeList, type PipeDraft } from "../hooks/usePipeList";
 import { formatFullNameForDisplay } from "../lib/normalizeFullName";
+import { VolumeInput } from "../components/form/VolumeInput";
+import { PhotoAttachField } from "../components/form/PhotoAttachField";
+import {
+  collectPhotoCardsWithoutValidData,
+  isValidDemountCard,
+  isValidWorkCard
+} from "../lib/formValidation";
+import type { PipeWorkKind } from "../types";
 
 const diameters = [
   17.1,
@@ -92,7 +100,7 @@ const selectClass = cn(
 );
 
 function pipeTotal(p: PipeDraft): number {
-  return Number((p.jointsCount * p.pipeLength).toFixed(2));
+  return Number(((p.jointsCount ?? 0) * (p.pipeLength ?? 0)).toFixed(2));
 }
 
 function scrollToFirstInvalidField() {
@@ -327,9 +335,20 @@ export function FormPage() {
   }
 
   async function submit() {
-    const isValidWorkCard = (p: PipeDraft) =>
-      !!p.siteName.trim() && !!p.insulationType && p.jointsCount > 0 && p.pipeLength > 0;
-    const isValidDemountCard = (p: PipeDraft) => !!p.siteName.trim() && p.pipeLength > 0;
+    const invalidPhotoCards = collectPhotoCardsWithoutValidData([
+      { pipes: shiftPipes, sectionLabel: "Работа за часы", isValid: isValidWorkCard, cardPrefix: "Труба" },
+      { pipes: pipelinePipes, sectionLabel: "Теплоизоляция трубопроводов", isValid: isValidWorkCard, cardPrefix: "Труба" },
+      { pipes: extraEquipmentPipes, sectionLabel: "Теплоизоляция оборудования", isValid: isValidWorkCard, cardPrefix: "Оборудование" },
+      { pipes: equipmentPipes, sectionLabel: "Демонтаж ТИ", isValid: isValidDemountCard, cardPrefix: "Трубопровод" }
+    ]);
+    if (invalidPhotoCards.length > 0) {
+      const first = invalidPhotoCards[0];
+      toast.error(
+        `Заполните карточку «${first.cardLabel}» (${first.sectionLabel}) — иначе прикреплённые фото не сохранятся.`
+      );
+      document.getElementById(`card-${first.localId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
 
     const validShiftPipes = shiftPipes.filter(isValidWorkCard);
     const validPipelinePipes = pipelinePipes.filter(isValidWorkCard);
@@ -376,10 +395,11 @@ export function FormPage() {
           diameter: p.diameter,
           insulationType: p.insulationType,
           jointsCount: p.jointsCount,
-          pipeLength: p.pipeLength,
+          pipeLength: p.pipeLength ?? 0,
           totalLength: pipeTotal(p),
           comments: p.comments,
-          photoUrls
+          photoUrls,
+          workKind: "shift_foil" as PipeWorkKind
         });
       }
 
@@ -397,10 +417,11 @@ export function FormPage() {
           diameter: p.diameter,
           insulationType: p.insulationType,
           jointsCount: p.jointsCount,
-          pipeLength: p.pipeLength,
+          pipeLength: p.pipeLength ?? 0,
           totalLength: pipeTotal(p),
           comments: p.comments,
-          photoUrls
+          photoUrls,
+          workKind: "pipeline_mount" as PipeWorkKind
         });
       }
 
@@ -419,10 +440,11 @@ export function FormPage() {
           diameter: p.diameter,
           insulationType: p.insulationType || "—",
           jointsCount: normalizedJoints,
-          pipeLength: p.pipeLength,
-          totalLength: Number((normalizedJoints * p.pipeLength).toFixed(2)),
+          pipeLength: p.pipeLength ?? 0,
+          totalLength: Number((normalizedJoints * (p.pipeLength ?? 0)).toFixed(2)),
           comments: p.comments,
-          photoUrls
+          photoUrls,
+          workKind: "pipeline_demount" as PipeWorkKind
         });
       }
 
@@ -440,10 +462,11 @@ export function FormPage() {
           diameter: p.diameter,
           insulationType: p.insulationType,
           jointsCount: p.jointsCount,
-          pipeLength: p.pipeLength,
+          pipeLength: p.pipeLength ?? 0,
           totalLength: pipeTotal(p),
           comments: p.comments,
-          photoUrls
+          photoUrls,
+          workKind: "equipment_mount" as PipeWorkKind
         });
       }
 
@@ -464,8 +487,11 @@ export function FormPage() {
         shiftWorkPhotoUrls,
         shiftWorkPipes: shiftWorkPipes.map((s) => s.trim()).filter(Boolean)
       };
+      let totalPhotos = shiftWorkPhotoUrls.length;
+      for (const pipe of builtPipes) totalPhotos += pipe.photoUrls?.length ?? 0;
+      toast.loading("Сохранение отчёта…", { id: "submit-report" });
       await createReport(payload);
-      toast.success("Отчёт сохранён");
+      toast.success(totalPhotos > 0 ? `Отчёт сохранён · фото: ${totalPhotos}` : "Отчёт сохранён", { id: "submit-report" });
       shiftPhotos.forEach((ph) => URL.revokeObjectURL(ph.preview));
       shiftPipes.forEach((p) => p.photos.forEach((ph) => URL.revokeObjectURL(ph.preview)));
       pipelinePipes.forEach((p) => p.photos.forEach((ph) => URL.revokeObjectURL(ph.preview)));
@@ -509,9 +535,8 @@ export function FormPage() {
     toast.success("Форма очищена");
   }
 
-  const isValidWorkCardCheck = (p: PipeDraft) =>
-    !!p.siteName.trim() && !!p.insulationType && p.jointsCount > 0 && p.pipeLength > 0;
-  const isValidDemountCardCheck = (p: PipeDraft) => !!p.siteName.trim() && p.pipeLength > 0;
+  const isValidWorkCardCheck = isValidWorkCard;
+  const isValidDemountCardCheck = isValidDemountCard;
   const hasValidShiftPipes = shiftPipes.some(isValidWorkCardCheck);
   const hasValidPipelinePipes = pipelinePipes.some(isValidWorkCardCheck);
   const hasValidEquipment = equipmentPipes.some(isValidDemountCardCheck);
@@ -710,17 +735,13 @@ export function FormPage() {
                         </div>
                         <div className="space-y-1">
                           <Label htmlFor={`shift-pipe-${p.localId}-len`}>Выполенный объем, п.м.</Label>
-                          <Input
+                          <VolumeInput
                             id={`shift-pipe-${p.localId}-len`}
-                            type="number"
-                            min={0.1}
-                            step="0.1"
-                            placeholder="Выполенный объем, п.м."
                             value={p.pipeLength}
-                            onChange={(e) =>
-                              updateShiftPipe(p.localId, { pipeLength: Math.max(0, Number(e.target.value || 0)) })
-                            }
-                            className={p.pipeLength <= 0 ? "border-amber-300 theme-dark:border-amber-700" : ""}
+                            onValueChange={(v) => updateShiftPipe(p.localId, { pipeLength: v })}
+                            placeholder="0"
+                            unit="п.м."
+                            invalid={(p.pipeLength ?? 0) <= 0}
                           />
                         </div>
                       </div>
@@ -810,6 +831,7 @@ export function FormPage() {
             return (
               <div
                 key={p.localId}
+                id={`card-${p.localId}`}
                 className="surface-floating rounded-2xl p-3"
               >
                 <div className="mb-2 flex items-center justify-between gap-2">
@@ -913,19 +935,15 @@ export function FormPage() {
                   </div>
                   <div className="space-y-1">
                     <Label htmlFor={`pipeline-${p.localId}-len`}>Выполенный объем, м2</Label>
-                    <Input
+                    <VolumeInput
                       id={`pipeline-${p.localId}-len`}
-                      type="number"
-                      min={0.1}
-                      step="0.1"
-                      placeholder="Выполенный объем, м2"
                       value={p.pipeLength}
-                      onChange={(e) =>
-                        updatePipelinePipe(p.localId, { pipeLength: Math.max(0, Number(e.target.value || 0)) })
-                      }
-                      className={p.pipeLength <= 0 ? "border-amber-300 theme-dark:border-amber-700" : ""}
+                      onValueChange={(v) => updatePipelinePipe(p.localId, { pipeLength: v })}
+                      placeholder="0"
+                      unit="м²"
+                      invalid={(p.pipeLength ?? 0) <= 0}
                     />
-                    {p.pipeLength <= 0 && (
+                    {(p.pipeLength ?? 0) <= 0 && (
                       <p className="text-xs text-amber-600">Объем должен быть больше 0.</p>
                     )}
                   </div>
@@ -1106,19 +1124,15 @@ export function FormPage() {
                   </div>
                   <div className="space-y-1">
                     <Label htmlFor={`extra-equipment-${p.localId}-len`}>Выполенный объем, м2</Label>
-                    <Input
+                    <VolumeInput
                       id={`extra-equipment-${p.localId}-len`}
-                      type="number"
-                      min={0.1}
-                      step="0.1"
-                      placeholder="Выполенный объем, м2"
                       value={p.pipeLength}
-                      onChange={(e) =>
-                        updateExtraEquipmentPipe(p.localId, { pipeLength: Math.max(0, Number(e.target.value || 0)) })
-                      }
-                      className={p.pipeLength <= 0 ? "border-amber-300 theme-dark:border-amber-700" : ""}
+                      onValueChange={(v) => updateExtraEquipmentPipe(p.localId, { pipeLength: v })}
+                      placeholder="0"
+                      unit="м²"
+                      invalid={(p.pipeLength ?? 0) <= 0}
                     />
-                    {p.pipeLength <= 0 && (
+                    {(p.pipeLength ?? 0) <= 0 && (
                       <p className="text-xs text-amber-600">Объем должен быть больше 0.</p>
                     )}
                   </div>
@@ -1280,19 +1294,15 @@ export function FormPage() {
                   </div>
                   <div className="space-y-1">
                     <Label htmlFor={`equipment-${p.localId}-len`}>Выполенный объем, м2</Label>
-                    <Input
+                    <VolumeInput
                       id={`equipment-${p.localId}-len`}
-                      type="number"
-                      min={0.1}
-                      step="0.1"
-                      placeholder="Выполенный объем, м2"
                       value={p.pipeLength}
-                      onChange={(e) =>
-                        updateEquipmentPipe(p.localId, { pipeLength: Math.max(0, Number(e.target.value || 0)) })
-                      }
-                      className={p.pipeLength <= 0 ? "border-amber-300 theme-dark:border-amber-700" : ""}
+                      onValueChange={(v) => updateEquipmentPipe(p.localId, { pipeLength: v })}
+                      placeholder="0"
+                      unit="м²"
+                      invalid={(p.pipeLength ?? 0) <= 0}
                     />
-                    {p.pipeLength <= 0 && (
+                    {(p.pipeLength ?? 0) <= 0 && (
                       <p className="text-xs text-amber-600">Объем должен быть больше 0.</p>
                     )}
                   </div>

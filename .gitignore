@@ -63,3 +63,4 @@ firebase/
 # Кэш парсинга КС-2 (генерируется локально)
 Мои_утилиты/Утилиты/Выполнение/Данные/cache_ks2/*.pkl
 pto-online-url.txt
+pto-photo-env.txt

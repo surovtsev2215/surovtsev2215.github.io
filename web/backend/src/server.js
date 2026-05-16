@@ -2,7 +2,14 @@ import express from "express";
 import cors from "cors";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import multer from "multer";
 import * as store from "./db/store.js";
+import { isPhotoStorageConfigured, uploadPhotoBuffer } from "./photoStorage.js";
+
+const photoUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 6 * 1024 * 1024, files: 1 }
+});
 
 const PORT = Number(process.env.PORT || 8787);
 const JWT_SECRET = process.env.JWT_SECRET || "local-dev-secret-change-me";
@@ -168,7 +175,42 @@ app.use(express.json({ limit: "20mb" }));
 app.get(
   "/api/health",
   asyncRoute(async (_req, res) => {
-    res.json({ ok: true, mode: store.getStoreMode() });
+    res.json({
+      ok: true,
+      mode: store.getStoreMode(),
+      photoStorage: isPhotoStorageConfigured() ? "ok" : "disabled"
+    });
+  })
+);
+
+app.post(
+  "/api/uploads",
+  authRequired,
+  photoUpload.single("file"),
+  asyncRoute(async (req, res) => {
+    if (!isPhotoStorageConfigured()) {
+      return res.status(503).json({
+        error: "Облачное хранилище фото не настроено на сервере.",
+        code: "PHOTO_STORAGE_DISABLED"
+      });
+    }
+    const file = req.file;
+    if (!file?.buffer?.length) {
+      return res.status(400).json({ error: "Файл не получен." });
+    }
+    const mime = String(file.mimetype || "");
+    if (!/^image\/(jpeg|png|webp)$/i.test(mime)) {
+      return res.status(400).json({ error: "Допустимы только изображения JPEG, PNG или WebP." });
+    }
+    try {
+      const url = await uploadPhotoBuffer(req.auth.uid, file.buffer, mime);
+      return res.status(201).json({ url, size: file.size });
+    } catch (error) {
+      if (error?.code === "PHOTO_STORAGE_DISABLED") {
+        return res.status(503).json({ error: "Хранилище фото отключено.", code: error.code });
+      }
+      throw error;
+    }
   })
 );
 

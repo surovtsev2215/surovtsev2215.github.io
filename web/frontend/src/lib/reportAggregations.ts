@@ -37,7 +37,8 @@ export function normalizeReport(raw: Report | (Partial<Report> & Record<string, 
             ? p.totalLength
             : Number(((p.jointsCount ?? 0) * (p.pipeLength ?? 0)).toFixed(2)),
         comments: p.comments ?? "",
-        photoUrls: Array.isArray(p.photoUrls) ? p.photoUrls : []
+        photoUrls: Array.isArray(p.photoUrls) ? p.photoUrls : [],
+        workKind: p.workKind
       }))
     };
   }

@@ -6,7 +6,7 @@ export interface PipeDraft {
   diameter: number;
   insulationType: string;
   jointsCount: number;
-  pipeLength: number;
+  pipeLength?: number;
   comments: string;
   photos: { file: File; preview: string }[];
 }
@@ -18,7 +18,7 @@ function makeEmptyPipe(defaultJointsCount: number): PipeDraft {
     diameter: 0,
     insulationType: "",
     jointsCount: defaultJointsCount,
-    pipeLength: 0,
+    pipeLength: undefined,
     comments: "",
     photos: []
   };

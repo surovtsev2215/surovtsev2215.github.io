@@ -9,9 +9,12 @@ import {
   getReportPipeCount,
   getReportTotalLength
 } from "../lib/reportAggregations";
+import { formatWorkSummaryLine, getReportWorkSummary, groupPipesByWorkKind, PIPE_WORK_LABELS } from "../lib/pipeWorkKind";
+import { ReportPipeCard } from "../components/reports/ReportPipeCard";
+import type { PipeWorkKind } from "../types";
 import { submitReportReview } from "../lib/reviewApi";
 import { isApiConfigured } from "../lib/runtimeConfig";
-import type { PipeEntry, Report, ReportReviewStatus } from "../types";
+import type { Report, ReportReviewStatus } from "../types";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Dialog, DialogContent, DialogTitle } from "../components/ui/dialog";
@@ -73,68 +76,7 @@ const ReportPhotoThumb = memo(function ReportPhotoThumb({
   );
 });
 
-const PipeCard = memo(function PipeCard({
-  pipe,
-  index,
-  onOpenPhoto
-}: {
-  pipe: PipeEntry;
-  index: number;
-  onOpenPhoto: (url: string) => void;
-}) {
-  const fields: { label: string; value: string }[] = [
-    { label: "Линия трубопровода", value: pipe.siteName || "—" },
-    { label: "Диаметр", value: pipe.diameter ? `${String(pipe.diameter).replace(".", ",")} мм` : "—" },
-    { label: "Тип изоляции", value: pipe.insulationType || "—" },
-    { label: "Стыки", value: String(pipe.jointsCount ?? 0) },
-    { label: "Длина одной трубы", value: `${pipe.pipeLength ?? 0} м` },
-    { label: "Суммарная длина", value: `${pipe.totalLength ?? 0} м` }
-  ];
-
-  return (
-    <Card className="soft-ring surface-floating animate-in-up">
-      <CardHeader>
-        <CardTitle className="text-base">
-          Труба №{index + 1}
-          {pipe.siteName ? ` · ${pipe.siteName}` : ""}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <dl className="grid gap-3 sm:grid-cols-2">
-          {fields.map(({ label, value }) => (
-            <div key={label}>
-              <dt className="text-xs text-slate-500 theme-dark:text-slate-400">{label}</dt>
-              <dd className="text-sm font-medium">{value}</dd>
-            </div>
-          ))}
-        </dl>
-        {!!pipe.comments && (
-          <div>
-            <div className="text-xs text-slate-500 theme-dark:text-slate-400">Комментарии</div>
-            <p className="mt-1 whitespace-pre-wrap text-sm">{pipe.comments}</p>
-          </div>
-        )}
-        {!!pipe.photoUrls?.length && (
-          <div>
-            <div className="mb-2 text-xs text-slate-500 theme-dark:text-slate-400">
-              Фото ({pipe.photoUrls.length})
-            </div>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-              {pipe.photoUrls.map((url, i) => (
-                <ReportPhotoThumb
-                  key={`${url}-${i}`}
-                  url={url}
-                  index={i}
-                  onOpen={() => onOpenPhoto(url)}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-});
+const SECTION_ORDER: PipeWorkKind[] = ["shift_foil", "pipeline_mount", "equipment_mount", "pipeline_demount"];
 
 export function ReportDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -403,16 +345,37 @@ export function ReportDetailPage() {
         </CardContent>
       </Card>
 
-      <div className="space-y-3">
-        {report.pipes.map((pipe, idx) => (
-          <PipeCard
-            key={pipe.id || idx}
-            pipe={pipe}
-            index={idx}
-            onOpenPhoto={openLightbox}
-          />
-        ))}
-      </div>
+      {(() => {
+        const grouped = groupPipesByWorkKind(report.pipes);
+        const workSummary = getReportWorkSummary(report);
+        return (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600 theme-dark:text-slate-300">
+              {formatWorkSummaryLine(workSummary)}
+              {workSummary.photoCount > 0 ? ` · фото: ${workSummary.photoCount}` : ""}
+            </p>
+            {SECTION_ORDER.map((kind) => {
+              const list = grouped.get(kind) ?? [];
+              if (!list.length) return null;
+              return (
+                <section key={kind} className="space-y-3">
+                  <h3 className="text-sm font-semibold text-slate-800 theme-dark:text-slate-100">
+                    {PIPE_WORK_LABELS[kind].section}
+                  </h3>
+                  {list.map((pipe, idx) => (
+                    <ReportPipeCard
+                      key={pipe.id || idx}
+                      pipe={pipe}
+                      index={idx}
+                      onOpenPhoto={openLightbox}
+                    />
+                  ))}
+                </section>
+              );
+            })}
+          </div>
+        );
+      })()}
 
       <Dialog open={!!lightbox} onOpenChange={(open) => !open && setLightbox(null)}>
         <DialogContent className="max-h-[90vh] max-w-4xl overflow-auto p-4">

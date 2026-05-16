@@ -10,11 +10,8 @@ import { EmptyState, ErrorState } from "../components/feedback/AsyncState";
 import { useReportFeed } from "../hooks/useReportFeed";
 import { useItrPeriod } from "../hooks/useItrPeriod";
 import { useUsersDirectory } from "../hooks/useUsersDirectory";
-import {
-  formatLineNames,
-  getReportPipeCount,
-  getReportTotalLength
-} from "../lib/reportAggregations";
+import { formatLineNames } from "../lib/reportAggregations";
+import { formatWorkSummaryLine, getReportWorkSummary } from "../lib/pipeWorkKind";
 import { formatFullNameForDisplay } from "../lib/normalizeFullName";
 import { exportExcel, exportPdf } from "../lib/exportReports";
 import { PeriodSwitcher } from "../components/itr/PeriodSwitcher";
@@ -224,8 +221,7 @@ export function DirectorReportsPage() {
       ) : (
         <div className="space-y-2">
           {rows.map((r) => {
-            const total = getReportTotalLength(r);
-            const pipeCount = getReportPipeCount(r);
+            const workSummary = getReportWorkSummary(r);
             const author = usersDirectory.byUid(r.userId);
             const status = (r.status ?? "submitted") as ReportReviewStatus;
             return (
@@ -261,7 +257,8 @@ export function DirectorReportsPage() {
                     <StatusBadge status={status} />
                   </div>
                   <div className="mt-1 text-slate-600 theme-dark:text-slate-300">
-                    Блок {r.fullName || "—"} · {pipeCount} {pipeCount === 1 ? "труба" : "труб(ы)"} · Σ {total.toFixed(1)} м
+                    Блок {r.fullName || "—"} · {formatWorkSummaryLine(workSummary)}
+                    {workSummary.photoCount > 0 ? ` · фото: ${workSummary.photoCount}` : ""}
                   </div>
                 </CardContent>
               </Card>

@@ -21,6 +21,12 @@ export interface Profile {
   createdAt?: string;
 }
 
+export type PipeWorkKind =
+  | "pipeline_mount"
+  | "equipment_mount"
+  | "pipeline_demount"
+  | "shift_foil";
+
 export interface PipeEntry {
   id: string;
   siteName: string;
@@ -31,6 +37,7 @@ export interface PipeEntry {
   totalLength: number;
   comments: string;
   photoUrls: string[];
+  workKind?: PipeWorkKind;
 }
 
 export type ReportReviewStatus = "submitted" | "approved" | "needs_fix";

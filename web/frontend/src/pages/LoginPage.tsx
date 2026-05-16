@@ -4,6 +4,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { PasswordInput } from "../components/ui/password-input";
+import { SiteVersionFooter } from "../components/layout/SiteVersionFooter";
 import { Label } from "../components/ui/label";
 import { validateFullNameInput, validatePasswordInput } from "../lib/authValidation";
 
@@ -112,6 +113,7 @@ export function LoginPage() {
         <p className="text-center text-xs text-slate-500 theme-dark:text-slate-400">
           Если нужен доступ, обратитесь к администратору.
         </p>
+        <SiteVersionFooter placement="auth" />
       </form>
     </div>
   );
