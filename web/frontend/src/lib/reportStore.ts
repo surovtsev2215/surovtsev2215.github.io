@@ -1,18 +1,7 @@
 import type { Report } from "../types";
-import { isFirebaseConfigured, db } from "./firebase";
 import { apiRequest } from "./apiClient";
-import { isApiConfigured } from "./runtimeConfig";
+import { isApiConfigured, isDemoAllowed } from "./runtimeConfig";
 import { normalizeReport } from "./reportAggregations";
-import {
-  addDoc,
-  collection,
-  doc,
-  getDoc,
-  onSnapshot,
-  orderBy,
-  query,
-  where
-} from "firebase/firestore";
 
 const KEY = "pto-demo-reports";
 const EVENT = "pto-demo-reports-changed";
@@ -20,7 +9,13 @@ const REPORT_POLL_INTERVAL_MS = 12000;
 const REPORT_CACHE_TTL_MS = 5000;
 let reportsCache: { at: number; rows: Report[] } | null = null;
 
-export function getReports(): Report[] {
+function assertApiOrDemo() {
+  if (!isApiConfigured && !isDemoAllowed) {
+    throw new Error("Отчёты доступны только через подключённый сервер.");
+  }
+}
+
+function getDemoReports(): Report[] {
   try {
     return (JSON.parse(localStorage.getItem(KEY) || "[]") as Report[])
       .map((r) => normalizeReport(r))
@@ -30,30 +25,28 @@ export function getReports(): Report[] {
   }
 }
 
-export function saveReport(report: Report) {
-  const items = getReports();
+function saveDemoReport(report: Report) {
+  const items = getDemoReports();
   items.unshift(report);
   localStorage.setItem(KEY, JSON.stringify(items.slice(0, 2000)));
   window.dispatchEvent(new CustomEvent(EVENT));
 }
 
 export async function createReport(report: Report) {
+  assertApiOrDemo();
   if (isApiConfigured) {
     await apiRequest<{ report: Report }>("/api/reports", {
       method: "POST",
       body: JSON.stringify(report)
     });
+    reportsCache = null;
     return;
   }
-  if (!isFirebaseConfigured) {
-    saveReport(report);
-    return;
-  }
-  const { id: _id, ...payload } = report;
-  await addDoc(collection(db, "reports"), payload);
+  saveDemoReport(report);
 }
 
 export async function fetchReportById(id: string): Promise<Report | null> {
+  assertApiOrDemo();
   if (isApiConfigured) {
     try {
       const { report } = await apiRequest<{ report: Report }>(`/api/reports/${id}`);
@@ -62,12 +55,7 @@ export async function fetchReportById(id: string): Promise<Report | null> {
       return null;
     }
   }
-  if (!isFirebaseConfigured) {
-    return getReports().find((r) => r.id === id) ?? null;
-  }
-  const snap = await getDoc(doc(db, "reports", id));
-  if (!snap.exists()) return null;
-  return normalizeReport({ id: snap.id, ...(snap.data() as Omit<Report, "id">) });
+  return getDemoReports().find((r) => r.id === id) ?? null;
 }
 
 export function subscribeReportsByUser(
@@ -76,6 +64,7 @@ export function subscribeReportsByUser(
   onError?: (message: string) => void,
   autoRefresh = true
 ) {
+  assertApiOrDemo();
   if (isApiConfigured) {
     let disposed = false;
     let inFlight = false;
@@ -111,34 +100,11 @@ export function subscribeReportsByUser(
       if (timer !== null) window.clearInterval(timer);
     };
   }
-  if (!isFirebaseConfigured) {
-    const emit = () =>
-      callback(getReports().filter((r) => r.userId === userId));
-    emit();
-    window.addEventListener(EVENT, emit);
-    return () => window.removeEventListener(EVENT, emit);
-  }
 
-  const q = query(
-    collection(db, "reports"),
-    where("userId", "==", userId),
-    orderBy("createdAt", "desc")
-  );
-  return onSnapshot(
-    q,
-    (snap) => {
-      const rows = snap.docs.map((d) =>
-        normalizeReport({
-          id: d.id,
-          ...(d.data() as Omit<Report, "id">)
-        })
-      );
-      callback(rows);
-    },
-    () => {
-      onError?.("Не удалось загрузить отчёты. Проверьте сеть.");
-    }
-  );
+  const emit = () => callback(getDemoReports().filter((r) => r.userId === userId));
+  emit();
+  window.addEventListener(EVENT, emit);
+  return () => window.removeEventListener(EVENT, emit);
 }
 
 export function subscribeAllReports(
@@ -146,6 +112,7 @@ export function subscribeAllReports(
   onError?: (message: string) => void,
   autoRefresh = true
 ) {
+  assertApiOrDemo();
   if (isApiConfigured) {
     let disposed = false;
     let inFlight = false;
@@ -181,27 +148,9 @@ export function subscribeAllReports(
       if (timer !== null) window.clearInterval(timer);
     };
   }
-  if (!isFirebaseConfigured) {
-    const emit = () => callback(getReports());
-    emit();
-    window.addEventListener(EVENT, emit);
-    return () => window.removeEventListener(EVENT, emit);
-  }
 
-  const q = query(collection(db, "reports"), orderBy("createdAt", "desc"));
-  return onSnapshot(
-    q,
-    (snap) => {
-      const rows = snap.docs.map((d) =>
-        normalizeReport({
-          id: d.id,
-          ...(d.data() as Omit<Report, "id">)
-        })
-      );
-      callback(rows);
-    },
-    () => {
-      onError?.("Не удалось загрузить отчёты. Проверьте сеть.");
-    }
-  );
+  const emit = () => callback(getDemoReports());
+  emit();
+  window.addEventListener(EVENT, emit);
+  return () => window.removeEventListener(EVENT, emit);
 }

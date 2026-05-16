@@ -26,6 +26,10 @@ debug-pto*.jsonl
 # Ключи LLM / локальная конфигурация ассистента АКЗ (не коммитить)
 Мои_утилиты/Утилиты/Окраска_по_PDF/assistant_config.json
 
+# Node
+node_modules/
+**/node_modules/
+
 # Web-локальные артефакты
 web/start_web_local.log
 web/backend/data/*.sqlite3
@@ -33,11 +37,29 @@ web/frontend/dist/
 local-test-last.log
 last-stable-commit.txt
 
-# Firebase
+# Логи и артефакты деплоя
+*.log
+local-test-run-*.log
+deploy-last.log
+
+# Локальные секреты и данные
+web/frontend/.env.local
+web/frontend/.env*.local
+web/backend/data/db.json
+web/backend/.env
+
+# Экспорты паролей (не хранить в репо)
+logins-*.xlsx
+
+# Временные отчёты разработки
+web/frontend/FRONTEND_UPGRADE_REPORT.md
+
+# Firebase (legacy)
 .firebase/
-firebase/functions/lib/
-firebase/functions/node_modules/
 .firebaserc
+web/firebase/
+firebase/
 
 # Кэш парсинга КС-2 (генерируется локально)
 Мои_утилиты/Утилиты/Выполнение/Данные/cache_ks2/*.pkl
+pto-online-url.txt

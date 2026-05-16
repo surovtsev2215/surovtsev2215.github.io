@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { cn, toTodayInputValue } from "../lib/utils";
 import { useAuth } from "../contexts/AuthContext";
-import { createReport } from "../lib/reportStore";
+import { createReport, subscribeReportsByUser } from "../lib/reportStore";
 import { toast } from "sonner";
 import type { PipeEntry, Report, ShiftWorkType } from "../types";
 import { uploadReportPhotos } from "../lib/photoUpload";
@@ -185,6 +185,23 @@ export function FormPage() {
   const [shiftWorkPipes, setShiftWorkPipes] = useState<string[]>([]);
   const [isShiftExpanded, setIsShiftExpanded] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [existingReportForDate, setExistingReportForDate] = useState<Report | null>(null);
+
+  useEffect(() => {
+    const uid = profile?.uid;
+    if (!uid || !date) {
+      setExistingReportForDate(null);
+      return;
+    }
+    return subscribeReportsByUser(
+      uid,
+      (rows) => {
+        setExistingReportForDate(rows.find((r) => r.date === date) ?? null);
+      },
+      undefined,
+      false
+    );
+  }, [profile?.uid, date]);
 
   useEffect(() => {
     const raw = localStorage.getItem(DRAFT_KEY);
@@ -505,16 +522,8 @@ export function FormPage() {
     hasValidPipelinePipes ||
     hasValidEquipment ||
     hasValidExtraEquipment;
-  const filledSections = [
-    shiftValue > 0 || !!isolatorWorkDescription.trim() || shiftPhotos.length > 0 || hasValidShiftPipes,
-    hasValidPipelinePipes,
-    hasValidExtraEquipment,
-    hasValidEquipment
-  ].filter(Boolean).length;
-  const totalSections = 4;
-  const fillPercent = Math.round((filledSections / totalSections) * 100);
   return (
-    <div className="page-stack pb-[calc(9rem+env(safe-area-inset-bottom))] sm:pb-3">
+    <div className="page-stack pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-4">
       <div className="surface-highlight animate-in-up p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -535,22 +544,6 @@ export function FormPage() {
           </div>
         </CardContent>
       </Card>
-
-      <div className="glass-toolbar surface-floating space-y-2">
-        <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-          <span className="font-semibold text-slate-700 theme-dark:text-slate-100">Прогресс заполнения</span>
-          <span className="text-xs text-slate-600 theme-dark:text-slate-300">
-            {filledSections}/{totalSections} секций · {fillPercent}%
-          </span>
-        </div>
-        <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200 theme-dark:bg-slate-800">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-primary to-accent transition-all"
-            style={{ width: `${fillPercent}%` }}
-            aria-hidden
-          />
-        </div>
-      </div>
 
       <StepSection
         icon={<Clock3 className="h-4 w-4" />}
@@ -579,6 +572,11 @@ export function FormPage() {
               }}
               className={!date ? "border-amber-300 theme-dark:border-amber-700" : ""}
             />
+            {existingReportForDate ? (
+              <p className="rounded-xl border border-amber-200 bg-amber-50/90 px-3 py-2 text-xs text-amber-900 theme-dark:border-amber-700/70 theme-dark:bg-amber-950/40 theme-dark:text-amber-100">
+                За выбранную дату отчёт уже отправлен. Можно сдать ещё один — оба будут в истории.
+              </p>
+            ) : null}
           </div>
           <div className="space-y-1">
             <Label htmlFor="isolator-work-description">Описание работы изолировщика</Label>
@@ -1364,35 +1362,23 @@ export function FormPage() {
         </StepSection>
       </div>
 
-      <div className="hidden flex-col-reverse gap-2 pt-1 sm:flex sm:flex-row sm:justify-end">
-        <Button
-          type="button"
-          variant="accent"
-          className="w-full shadow-sm sm:w-auto"
-          disabled={submitting || !canSubmit}
-          onClick={() => void submit()}
-        >
-          {submitting ? "Сохранение..." : "Отправить отчёт"}
-        </Button>
-      </div>
-      {!canSubmit && (
-        <p className="text-xs text-amber-600">
-          Для отправки достаточно заполнить любой блок: день зачета, фольма-ткань, трубопроводы или оборудование.
-        </p>
-      )}
-      <div className="sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom)+0.5rem)] z-20 mt-3 px-3 sm:hidden">
-        <div className="mx-auto max-w-6xl">
-          <div className="glass rounded-xl border p-2 shadow-card">
-            <Button
-              type="button"
-              variant="accent"
-              className="w-full shadow-sm"
-              disabled={submitting || !canSubmit}
-              onClick={() => void submit()}
-            >
-              {submitting ? "Сохранение..." : "Отправить отчёт"}
-            </Button>
-          </div>
+      <div className="mt-6 space-y-2 border-t border-slate-200/80 pt-4 theme-dark:border-slate-700/80">
+        {!canSubmit && (
+          <p className="text-xs text-amber-600 theme-dark:text-amber-400">
+            Для отправки достаточно заполнить любой блок: день зачета, фольма-ткань, трубопроводы или
+            оборудование.
+          </p>
+        )}
+        <div className="flex justify-stretch sm:justify-end">
+          <Button
+            type="button"
+            variant="accent"
+            className="w-full shadow-sm sm:w-auto sm:min-w-[12rem]"
+            disabled={submitting || !canSubmit}
+            onClick={() => void submit()}
+          >
+            {submitting ? "Сохранение..." : "Отправить отчёт"}
+          </Button>
         </div>
       </div>
     </div>

@@ -1,6 +1,6 @@
 import { Suspense, memo, useCallback, useEffect, useMemo, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { ClipboardList, History, Menu, Users } from "lucide-react";
+import { ClipboardList, History, ListFilter, Menu, Users } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { formatFullNameForDisplay } from "../../lib/normalizeFullName";
 import { cn } from "../../lib/utils";
@@ -15,6 +15,7 @@ type StaticPreload =
   | "form"
   | "history"
   | "adminUsers"
+  | "adminReports"
   | "directorWorkspace";
 
 const preloadedTargets = new Set<StaticPreload | ItrPreloadKey>();
@@ -32,11 +33,11 @@ function preloadPage(target: StaticPreload | ItrPreloadKey) {
     case "adminUsers":
       void import("../../pages/AdminUsersPage");
       return;
+    case "adminReports":
+      void import("../../pages/AdminReportsPage");
+      return;
     case "directorWorkspace":
       void import("../../pages/DirectorWorkspacePage");
-      return;
-    case "directorHome":
-      void import("../../pages/DirectorHomePage");
       return;
     case "directorReports":
       void import("../../pages/DirectorReportsPage");
@@ -46,9 +47,6 @@ function preloadPage(target: StaticPreload | ItrPreloadKey) {
       return;
     case "directorTasks":
       void import("../../pages/DirectorTasksPage");
-      return;
-    case "directorAnalytics":
-      void import("../../pages/DirectorAnalyticsPage");
       return;
     case "directorApprovals":
       void import("../../pages/DirectorApprovalsPage");
@@ -296,7 +294,11 @@ function ItrBadgeProvider() {
     [profile?.position, profile?.allowedSections]
   );
   const rawSection = new URLSearchParams(location.search).get("section");
-  const activeSection: ItrSection = access.hasSection(rawSection as ItrSection) ? (rawSection as ItrSection) : "home";
+  const normalized =
+    rawSection === "home" || rawSection === "analytics" ? "reports" : (rawSection as ItrSection);
+  const activeSection: ItrSection = access.hasSection(normalized)
+    ? normalized
+    : (access.sections[0] ?? "reports");
 
   useEffect(() => {
     const warmSections = access.sections.slice(0, 2);
@@ -327,15 +329,15 @@ function ItrBadgeProvider() {
     return next;
   }, [access, reports.error, reports.totals.submittedCount, tasks.error, tasks.openCount, tasks.overdueCount]);
 
-  const selectSection = useCallback((section: ItrSection) => {
-    if (section === activeSection) return;
-    preloadPage("directorWorkspace");
-    if (section === "home") {
-      navigate("/director", { replace: true });
-      return;
-    }
-    navigate(`/director?section=${section}`, { replace: true });
-  }, [activeSection, navigate]);
+  const selectSection = useCallback(
+    (section: ItrSection) => {
+      const target = section === "home" || section === "analytics" ? "reports" : section;
+      if (target === activeSection) return;
+      preloadPage("directorWorkspace");
+      navigate(`/director?section=${target}`, { replace: true });
+    },
+    [activeSection, navigate]
+  );
 
   return (
     <>
@@ -387,8 +389,8 @@ export function AppLayout() {
   }
 
   const layoutGridClass = useMemo(
-    () => (isDirector ? "md:grid-cols-[240px_minmax(0,1fr)]" : ""),
-    [isDirector]
+    () => (isDirector || isAdmin ? "md:grid-cols-[240px_minmax(0,1fr)]" : ""),
+    [isDirector, isAdmin]
   );
 
   return (
@@ -475,6 +477,27 @@ export function AppLayout() {
 
       <div className={cn("mx-auto grid w-full max-w-7xl gap-3 px-2 py-2 sm:gap-4 sm:px-5 sm:py-4", layoutGridClass)}>
         {isDirector && isApiConfigured ? <ItrBadgeProvider /> : null}
+        {isAdmin ? (
+          <aside className="glass hidden rounded-2xl p-2.5 shadow-card md:block">
+            <nav className="flex flex-col gap-1">
+              <PrefetchNavLink
+                to="/admin/users"
+                label="Пользователи"
+                className={navLinkClass}
+                preload="adminUsers"
+                Icon={Users}
+                end
+              />
+              <PrefetchNavLink
+                to="/admin/reports"
+                label="Все отчёты"
+                className={navLinkClass}
+                preload="adminReports"
+                Icon={ListFilter}
+              />
+            </nav>
+          </aside>
+        ) : null}
         <main id="main-content" className="glass rounded-2xl p-2.5 pb-24 shadow-card sm:p-4 md:pb-5 lg:p-5">
           <Suspense
             fallback={
@@ -524,16 +547,29 @@ export function AppLayout() {
               </>
             )}
             {isAdmin && (
-              <NavLink
-                to="/admin/users"
-                className={bottomNavLinkClass}
-                onMouseEnter={() => preloadPage("adminUsers")}
-                onFocus={() => preloadPage("adminUsers")}
-                onTouchStart={() => preloadPage("adminUsers")}
-              >
-                <Users className="h-5 w-5 shrink-0" aria-hidden />
-                <span>Люди</span>
-              </NavLink>
+              <>
+                <NavLink
+                  to="/admin/users"
+                  className={bottomNavLinkClass}
+                  end
+                  onMouseEnter={() => preloadPage("adminUsers")}
+                  onFocus={() => preloadPage("adminUsers")}
+                  onTouchStart={() => preloadPage("adminUsers")}
+                >
+                  <Users className="h-5 w-5 shrink-0" aria-hidden />
+                  <span>Пользователи</span>
+                </NavLink>
+                <NavLink
+                  to="/admin/reports"
+                  className={bottomNavLinkClass}
+                  onMouseEnter={() => preloadPage("adminReports")}
+                  onFocus={() => preloadPage("adminReports")}
+                  onTouchStart={() => preloadPage("adminReports")}
+                >
+                  <ListFilter className="h-5 w-5 shrink-0" aria-hidden />
+                  <span>Отчёты</span>
+                </NavLink>
+              </>
             )}
           </div>
         </nav>

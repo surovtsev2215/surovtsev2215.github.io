@@ -1,0 +1,3 @@
+Etu papku ne trogayte.
+Polzuytes yarlykami na rabochem stole: papka PTO.
+Sozdat yarlyki: v korne proekta fajl SOZDAT-YARLYKI.bat

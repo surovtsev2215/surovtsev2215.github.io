@@ -1,4 +1,4 @@
-import type { UserRole } from "../types";
+import type { Profile, UserRole } from "../types";
 import { formatFullNameForDisplay, normalizeFullName } from "./normalizeFullName";
 import { syntheticEmailForUid } from "./syntheticUserEmail";
 
@@ -61,6 +61,22 @@ function migrateRawList(raw: unknown): DemoUser[] {
     byUid.set(user.uid, user);
   }
   return Array.from(byUid.values());
+}
+
+export function authenticateDemoUser(fullName: string, password: string): DemoUser | null {
+  const norm = normalizeFullName(formatFullNameForDisplay(fullName));
+  return (
+    getDemoUsers().find((u) => normalizeFullName(u.fullName) === norm && u.password === password) ?? null
+  );
+}
+
+export function demoUserToProfile(user: DemoUser): Profile {
+  return {
+    uid: user.uid,
+    email: user.email,
+    fullName: user.fullName,
+    role: user.role
+  };
 }
 
 export function getDemoUsers(): DemoUser[] {

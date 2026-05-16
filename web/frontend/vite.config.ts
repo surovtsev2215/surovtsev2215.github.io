@@ -21,20 +21,6 @@ export default defineConfig({
             if (id.includes("react") || id.includes("react-router-dom")) {
               return "vendor-react";
             }
-            if (id.includes("firebase/auth")) {
-              return "vendor-firebase-auth";
-            }
-            if (
-              id.includes("firebase/firestore") ||
-              id.includes("firebase/storage") ||
-              id.includes("@firebase/firestore") ||
-              id.includes("@firebase/storage")
-            ) {
-              return "vendor-firebase-data";
-            }
-            if (id.includes("firebase/app") || id.includes("@firebase/app")) {
-              return "vendor-firebase-core";
-            }
             if (id.includes("lucide-react") || id.includes("sonner")) {
               return "vendor-ui";
             }

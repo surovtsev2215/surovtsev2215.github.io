@@ -3,6 +3,15 @@ import ReactDOM from "react-dom/client";
 import { HashRouter } from "react-router-dom";
 import App from "./App";
 import "./index.css";
+import { isApiConfigured, isDemoAllowed } from "./lib/runtimeConfig";
+
+if (isDemoAllowed) {
+  console.info("[ПТО] Локальный demo-режим: VITE_API_BASE_URL не задан, данные в localStorage.");
+}
+
+if (!import.meta.env.DEV && !isApiConfigured) {
+  console.error("[ПТО] Production-сборка без VITE_API_BASE_URL. Укажите URL backend в GitHub Variables.");
+}
 
 const CHUNK_RELOAD_KEY = "pto-chunk-reload-once";
 

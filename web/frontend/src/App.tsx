@@ -11,12 +11,11 @@ const loadLoginPage = () => import("./pages/LoginPage");
 const loadFormPage = () => import("./pages/FormPage");
 const loadHistoryPage = () => import("./pages/HistoryPage");
 const loadAdminUsersPage = () => import("./pages/AdminUsersPage");
-const loadDirectorHomePage = () => import("./pages/DirectorHomePage");
+const loadAdminReportsPage = () => import("./pages/AdminReportsPage");
 const loadDirectorWorkspacePage = () => import("./pages/DirectorWorkspacePage");
 const loadDirectorReportsPage = () => import("./pages/DirectorReportsPage");
 const loadDirectorTeamPage = () => import("./pages/DirectorTeamPage");
 const loadDirectorTasksPage = () => import("./pages/DirectorTasksPage");
-const loadDirectorAnalyticsPage = () => import("./pages/DirectorAnalyticsPage");
 const loadDirectorApprovalsPage = () => import("./pages/DirectorApprovalsPage");
 const loadDirectorProfilePage = () => import("./pages/DirectorProfilePage");
 const loadReportDetailPage = () => import("./pages/ReportDetailPage");
@@ -26,6 +25,9 @@ const FormPage = lazy(() => loadFormPage().then((m) => ({ default: m.FormPage })
 const HistoryPage = lazy(() => loadHistoryPage().then((m) => ({ default: m.HistoryPage })));
 const AdminUsersPage = lazy(() =>
   loadAdminUsersPage().then((m) => ({ default: m.AdminUsersPage }))
+);
+const AdminReportsPage = lazy(() =>
+  loadAdminReportsPage().then((m) => ({ default: m.AdminReportsPage }))
 );
 const DirectorWorkspacePage = lazy(() =>
   loadDirectorWorkspacePage().then((m) => ({ default: m.DirectorWorkspacePage }))
@@ -66,8 +68,8 @@ function ProtectedRoute({ allowedRoles }: { allowedRoles?: UserRole[] }) {
 }
 
 function ItrLegacyRedirect({ section }: { section: ItrSection }) {
-  if (section === "home") return <Navigate to="/director" replace />;
-  return <Navigate to={`/director?section=${section}`} replace />;
+  const target = section === "home" || section === "analytics" ? "reports" : section;
+  return <Navigate to={`/director?section=${target}`} replace />;
 }
 
 function RootRedirect() {
@@ -90,18 +92,16 @@ function RoutePrefetcher() {
       void loadReportDetailPage();
       if (role === "admin") {
         void loadAdminUsersPage();
+        void loadAdminReportsPage();
         return;
       }
       if (role === "director") {
         void loadDirectorWorkspacePage();
         const access = buildItrAccess(profile?.position, profile?.allowedSections);
-        // Keep startup light: prefetch only first critical sections.
         for (const section of access.sections.slice(0, 2)) {
-          if (section === "home") void loadDirectorHomePage();
           if (section === "reports") void loadDirectorReportsPage();
           if (section === "team") void loadDirectorTeamPage();
           if (section === "tasks") void loadDirectorTasksPage();
-          if (section === "analytics") void loadDirectorAnalyticsPage();
           if (section === "approvals") void loadDirectorApprovalsPage();
           if (section === "profile") void loadDirectorProfilePage();
         }
@@ -150,6 +150,7 @@ export default function App() {
             <Route element={<AppLayout />}>
               <Route path="/admin/dashboard" element={<Navigate to="/admin/users" replace />} />
               <Route path="/admin/users" element={<AdminUsersPage />} />
+              <Route path="/admin/reports" element={<AdminReportsPage />} />
             </Route>
           </Route>
 

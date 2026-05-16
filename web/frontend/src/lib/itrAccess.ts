@@ -1,9 +1,6 @@
 import {
   ClipboardList,
-  Home,
-  ListChecks,
   ListFilter,
-  PieChart,
   ShieldCheck,
   UserRound,
   Users,
@@ -18,11 +15,9 @@ export type ItrPreset = "management" | "engineer" | "field" | "default";
 
 export type ItrPreloadKey =
   | "directorWorkspace"
-  | "directorHome"
   | "directorReports"
   | "directorTeam"
   | "directorTasks"
-  | "directorAnalytics"
   | "directorApprovals"
   | "directorProfile";
 
@@ -38,11 +33,11 @@ export interface ItrSectionMeta {
 export const itrSectionMeta: Record<ItrSection, ItrSectionMeta> = {
   home: {
     id: "home",
-    label: "Главная",
-    to: "/director",
-    icon: Home,
-    preload: "directorHome",
-    description: "Дашборд под вашу должность с ключевыми показателями и быстрыми действиями."
+    label: "Отчёты",
+    to: "/director?section=reports",
+    icon: ListFilter,
+    preload: "directorReports",
+    description: "Перенаправление на раздел отчётов."
   },
   reports: {
     id: "reports",
@@ -70,11 +65,11 @@ export const itrSectionMeta: Record<ItrSection, ItrSectionMeta> = {
   },
   analytics: {
     id: "analytics",
-    label: "Аналитика",
-    to: "/director?section=analytics",
-    icon: PieChart,
-    preload: "directorAnalytics",
-    description: "Динамика по дням, топ исполнителей, распределение по типам изоляции."
+    label: "Отчёты",
+    to: "/director?section=reports",
+    icon: ListFilter,
+    preload: "directorReports",
+    description: "Перенаправление на раздел отчётов."
   },
   approvals: {
     id: "approvals",
@@ -94,25 +89,22 @@ export const itrSectionMeta: Record<ItrSection, ItrSectionMeta> = {
   }
 };
 
-export const ALL_ITR_SECTIONS: ItrSection[] = [
-  "home",
-  "reports",
-  "team",
-  "tasks",
-  "analytics",
-  "approvals",
-  "profile"
-];
+export const ALL_ITR_SECTIONS: ItrSection[] = ["reports", "team", "tasks", "approvals", "profile"];
 
 export function getItrSections(position?: string | null, allowedSections?: ItrSection[] | null): ItrSection[] {
   void position;
   if (Array.isArray(allowedSections) && allowedSections.length > 0) {
-    const unique = Array.from(new Set(allowedSections)).filter((section): section is ItrSection =>
-      ALL_ITR_SECTIONS.includes(section)
-    );
-    if (!unique.includes("home")) unique.unshift("home");
-    if (!unique.includes("profile")) unique.push("profile");
-    return unique;
+    const unique = Array.from(
+      new Set(
+        allowedSections.map((section) =>
+          section === "home" || section === "analytics" ? "reports" : section
+        )
+      )
+    ).filter((section) => ALL_ITR_SECTIONS.includes(section as (typeof ALL_ITR_SECTIONS)[number])) as ItrSection[];
+    const normalized = Array.from(new Set(unique));
+    if (!normalized.includes("reports")) normalized.unshift("reports");
+    if (!normalized.includes("profile")) normalized.push("profile");
+    return normalized;
   }
   return ALL_ITR_SECTIONS;
 }
@@ -138,7 +130,7 @@ export function presetTitle(preset: ItrPreset): string {
 }
 
 export function hasSection(position: string | null | undefined, section: ItrSection): boolean {
-  return getItrSections(position).includes(section);
+  return getItrSections(position).includes(section === "home" || section === "analytics" ? "reports" : section);
 }
 
 export interface ItrAccess {
@@ -163,7 +155,7 @@ export function buildItrAccess(
     sections,
     preset,
     presetTitle: presetTitle(preset),
-    hasSection: (section) => sections.includes(section),
+    hasSection: (section) => sections.includes(section === "home" || section === "analytics" ? "reports" : section),
     isManagement: preset === "management",
     isEngineer: preset === "engineer",
     isField: preset === "field"

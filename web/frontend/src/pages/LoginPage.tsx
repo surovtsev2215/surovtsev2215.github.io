@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { Button } from "../components/ui/button";
@@ -13,6 +13,16 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [slowHint, setSlowHint] = useState(false);
+
+  useEffect(() => {
+    if (!loading) {
+      setSlowHint(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setSlowHint(true), 8000);
+    return () => window.clearTimeout(timer);
+  }, [loading]);
 
   if (user || profile) {
     const target = role === "admin" ? "/admin/users" : role === "director" ? "/director" : "/form";
