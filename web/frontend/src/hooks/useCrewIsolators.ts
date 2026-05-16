@@ -17,7 +17,7 @@ export function useCrewIsolators() {
       } catch (e) {
         if (!cancelled) {
           setIsolators([]);
-          setError(e instanceof Error ? e.message : "Не удалось загрузить список изолировщиков");
+          setError(e instanceof Error ? e.message : "Не удалось загрузить список изолировщиков.");
         }
       } finally {
         if (!cancelled) setLoading(false);

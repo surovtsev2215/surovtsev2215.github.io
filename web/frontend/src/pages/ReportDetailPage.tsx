@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, Navigate, useLocation, useParams } from "react-router-dom";
-import { ClipboardList, FileText } from "lucide-react";
+import { Link, Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
+import { ClipboardList, FileText, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../contexts/AuthContext";
-import { fetchReportById } from "../lib/reportStore";
+import { deleteReport, fetchReportById } from "../lib/reportStore";
+import { canDeleteReport, canEditReport, getReportStatus } from "../lib/reportPermissions";
+import { ReportReviewNotice } from "../components/reports/ReportReviewNotice";
+import { ReportStatusBadge } from "../components/reports/ReportStatusBadge";
 import { formatLineNames } from "../lib/reportAggregations";
 import { formatWorkSummaryLine, getReportWorkSummary, groupPipesByWorkKind, PIPE_WORK_LABELS } from "../lib/pipeWorkKind";
 import { LazyReportPhotoThumb } from "../components/reports/LazyReportPhotoThumb";
@@ -21,31 +24,12 @@ import { useUsersDirectory } from "../hooks/useUsersDirectory";
 import { formatFullNameForDisplay } from "../lib/normalizeFullName";
 import { collectUniqueCrewFromReport, formatCrewLine } from "../lib/brigade";
 
-const STATUS_LABELS: Record<ReportReviewStatus, string> = {
-  submitted: "На согласование",
-  approved: "Согласован",
-  needs_fix: "На доработку"
-};
-
-function StatusBadge({ status }: { status: ReportReviewStatus }) {
-  const cls =
-    status === "approved"
-      ? "border-emerald-200 bg-emerald-50 text-emerald-700 theme-dark:border-emerald-800 theme-dark:bg-emerald-950/40 theme-dark:text-emerald-300"
-      : status === "needs_fix"
-        ? "border-amber-200 bg-amber-50 text-amber-700 theme-dark:border-amber-800 theme-dark:bg-amber-950/40 theme-dark:text-amber-300"
-        : "border-sky-200 bg-sky-50 text-sky-700 theme-dark:border-sky-800 theme-dark:bg-sky-950/40 theme-dark:text-sky-300";
-  return (
-    <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${cls}`}>
-      {STATUS_LABELS[status]}
-    </span>
-  );
-}
-
 const SECTION_ORDER: PipeWorkKind[] = ["shift_foil", "pipeline_mount", "equipment_mount", "pipeline_demount"];
 
 export function ReportDetailPage() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
+  const navigate = useNavigate();
   const { profile, role } = useAuth();
   const usersDirectory = useUsersDirectory();
   const [report, setReport] = useState<Report | null | undefined>(undefined);
@@ -54,6 +38,7 @@ export function ReportDetailPage() {
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [reviewNote, setReviewNote] = useState("");
   const [reviewSubmitting, setReviewSubmitting] = useState<null | ReportReviewStatus>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -132,9 +117,31 @@ export function ReportDetailPage() {
   const backTo =
     role === "admin" ? "/admin/users" : role === "director" ? directorBack ?? "/director/reports" : "/history";
 
-  const status = (report.status ?? "submitted") as ReportReviewStatus;
+  const status = getReportStatus(report);
   const canReview = (role === "director" || role === "admin") && isApiConfigured;
   const canTask = canReview;
+  const canEdit = canEditReport(report, profile?.uid, role);
+  const canDelete = canDeleteReport(report, profile?.uid, role);
+  const isIsolatorOwner = role !== "admin" && role !== "director" && report.userId === profile?.uid;
+
+  const reportId = report.id;
+  const reportDate = report.date;
+
+  async function handleDelete() {
+    if (!reportId || !canDelete) return;
+    const ok = window.confirm(`Удалить отчёт за ${reportDate}? Это действие нельзя отменить.`);
+    if (!ok) return;
+    setDeleting(true);
+    try {
+      await deleteReport(reportId);
+      toast.success("Отчёт удалён");
+      navigate(backTo, { replace: true });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Не удалось удалить отчёт");
+    } finally {
+      setDeleting(false);
+    }
+  }
   const authorDisplay = author?.fullName ? formatFullNameForDisplay(author.fullName) : report.userEmail;
   const crewSummary = formatCrewLine(collectUniqueCrewFromReport(report));
   const submittedByDisplay = report.submittedByFullName
@@ -168,7 +175,7 @@ export function ReportDetailPage() {
               <p className="mt-1 text-xs text-slate-100/80">Участники: {crewSummary}</p>
             ) : null}
             <div className="mt-2">
-              <StatusBadge status={status} />
+              <ReportStatusBadge status={status} />
             </div>
           </div>
           <FileText className="h-5 w-5 shrink-0 text-amber-300" />
@@ -182,11 +189,27 @@ export function ReportDetailPage() {
               <ClipboardList className="h-4 w-4" aria-hidden /> Поставить задачу
             </Button>
           )}
+          {canEdit ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => navigate(`/form?edit=${encodeURIComponent(report.id!)}`)}
+            >
+              <Pencil className="h-4 w-4" aria-hidden /> Изменить
+            </Button>
+          ) : null}
+          {canDelete ? (
+            <Button variant="outline" size="sm" disabled={deleting} onClick={() => void handleDelete()}>
+              <Trash2 className="h-4 w-4" aria-hidden /> {deleting ? "Удаление…" : "Удалить"}
+            </Button>
+          ) : null}
           <Button variant="secondary" size="sm" asChild>
             <Link to={backTo}>← Назад</Link>
           </Button>
         </div>
       </div>
+
+      {isIsolatorOwner ? <ReportReviewNotice report={report} /> : null}
 
       {canReview && (
         <Card className="soft-ring surface-floating">

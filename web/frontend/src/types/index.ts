@@ -1,5 +1,13 @@
 export type UserRole = "admin" | "isolator" | "director";
-export type ItrSection = "home" | "reports" | "team" | "tasks" | "analytics" | "approvals" | "profile";
+export type ItrSection =
+  | "home"
+  | "reports"
+  | "timesheets"
+  | "team"
+  | "tasks"
+  | "analytics"
+  | "approvals"
+  | "profile";
 
 export type ShiftWorkType = "hours" | "money";
 

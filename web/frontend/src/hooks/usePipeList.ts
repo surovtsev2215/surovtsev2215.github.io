@@ -11,6 +11,8 @@ export interface PipeDraft {
   pipeLength?: number;
   comments: string;
   photos: { file: File; preview: string }[];
+  /** Уже загруженные URL (режим редактирования отчёта). */
+  keptPhotoUrls?: string[];
   crewMembers: CrewMemberRef[];
 }
 
@@ -31,6 +33,7 @@ function makeEmptyPipe(defaultJointsCount: number): PipeDraft {
     pipeLength: undefined,
     comments: "",
     photos: [],
+    keptPhotoUrls: [],
     crewMembers: []
   };
 }
@@ -62,7 +65,8 @@ export function usePipeList(options?: { defaultJointsCount?: number; maxPhotosPe
     if (!files?.length) return emptyPhotoResult;
 
     const pipe = pipesRef.current.find((p) => p.localId === localId);
-    const room = pipe ? Math.max(0, maxPhotosPerPipe - pipe.photos.length) : 0;
+    const kept = pipe?.keptPhotoUrls?.length ?? 0;
+    const room = pipe ? Math.max(0, maxPhotosPerPipe - pipe.photos.length - kept) : 0;
     if (room <= 0) {
       return {
         added: 0,

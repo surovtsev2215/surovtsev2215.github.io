@@ -3,7 +3,7 @@ import { cn } from "../../lib/utils";
 
 type SiteVersionFooterProps = {
   className?: string;
-  /** На телефоне — над нижним меню; на широком экране — в потоке страницы */
+  /** В шапке приложения или на экране входа */
   placement?: "app" | "auth";
 };
 
@@ -16,8 +16,7 @@ export function SiteVersionFooter({ className, placement = "app" }: SiteVersionF
       aria-label="Версия сайта"
       className={cn(
         "border-t border-slate-200/70 bg-slate-100/95 px-3 py-1.5 text-center backdrop-blur-sm theme-dark:border-slate-700/70 theme-dark:bg-slate-900/95",
-        placement === "app" &&
-          "fixed inset-x-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-[25] md:static md:z-auto md:mt-1 md:rounded-b-2xl",
+        placement === "app" && "mx-auto w-full shrink-0 md:rounded-b-2xl",
         placement === "auth" && "mt-4 rounded-xl border border-slate-200/80",
         className
       )}

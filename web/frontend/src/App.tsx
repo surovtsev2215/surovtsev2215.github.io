@@ -19,6 +19,7 @@ const loadDirectorReportsPage = () => import("./pages/DirectorReportsPage");
 const loadDirectorTeamPage = () => import("./pages/DirectorTeamPage");
 const loadDirectorTasksPage = () => import("./pages/DirectorTasksPage");
 const loadDirectorApprovalsPage = () => import("./pages/DirectorApprovalsPage");
+const loadDirectorTimesheetsPage = () => import("./pages/DirectorTimesheetsPage");
 const loadDirectorProfilePage = () => import("./pages/DirectorProfilePage");
 const loadReportDetailPage = () => import("./pages/ReportDetailPage");
 
@@ -105,6 +106,7 @@ function RoutePrefetcher() {
           if (section === "team") void loadDirectorTeamPage();
           if (section === "tasks") void loadDirectorTasksPage();
           if (section === "approvals") void loadDirectorApprovalsPage();
+          if (section === "timesheets") void loadDirectorTimesheetsPage();
           if (section === "profile") void loadDirectorProfilePage();
         }
         return;
@@ -171,6 +173,7 @@ export default function App() {
               <Route path="/director/tasks" element={<ItrLegacyRedirect section="tasks" />} />
               <Route path="/director/analytics" element={<ItrLegacyRedirect section="analytics" />} />
               <Route path="/director/approvals" element={<ItrLegacyRedirect section="approvals" />} />
+              <Route path="/director/timesheets" element={<ItrLegacyRedirect section="timesheets" />} />
               <Route path="/director/profile" element={<ItrLegacyRedirect section="profile" />} />
             </Route>
           </Route>

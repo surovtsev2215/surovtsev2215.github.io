@@ -23,7 +23,7 @@ function parseJsonSafe(raw, fallback) {
 function ensureDb() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   if (!fs.existsSync(DATA_FILE)) {
-    const initial = { users: [], reports: [], tasks: [] };
+    const initial = { users: [], reports: [], tasks: [], settings: {} };
     fs.writeFileSync(DATA_FILE, JSON.stringify(initial, null, 2), "utf8");
   }
 }
@@ -37,10 +37,11 @@ function flushDbNow() {
 function readDb() {
   if (dbCache) return dbCache;
   ensureDb();
-  const db = parseJsonSafe(fs.readFileSync(DATA_FILE, "utf8"), { users: [], reports: [], tasks: [] });
+  const db = parseJsonSafe(fs.readFileSync(DATA_FILE, "utf8"), { users: [], reports: [], tasks: [], settings: {} });
   if (!Array.isArray(db.users)) db.users = [];
   if (!Array.isArray(db.reports)) db.reports = [];
   if (!Array.isArray(db.tasks)) db.tasks = [];
+  if (!db.settings || typeof db.settings !== "object") db.settings = {};
   dbCache = db;
   return db;
 }
@@ -146,6 +147,15 @@ export async function jsonUpdateReport(report) {
   return report;
 }
 
+export async function jsonDeleteReport(id) {
+  const db = readDb();
+  const index = db.reports.findIndex((r) => String(r.id) === String(id));
+  if (index === -1) return false;
+  db.reports.splice(index, 1);
+  writeDb(db);
+  return true;
+}
+
 export async function jsonListTasks() {
   return readDb().tasks.slice();
 }
@@ -177,6 +187,19 @@ export async function jsonDeleteTask(id) {
   db.tasks.splice(index, 1);
   writeDb(db);
   return true;
+}
+
+export async function jsonGetSetting(key) {
+  const db = readDb();
+  return db.settings?.[key] ?? null;
+}
+
+export async function jsonSetSetting(key, value) {
+  const db = readDb();
+  if (!db.settings || typeof db.settings !== "object") db.settings = {};
+  db.settings[key] = value;
+  writeDb(db);
+  return value;
 }
 
 export function getJsonDbPath() {

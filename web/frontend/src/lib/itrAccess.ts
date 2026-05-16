@@ -2,6 +2,7 @@ import {
   ClipboardList,
   ListFilter,
   ShieldCheck,
+  Table2,
   UserRound,
   Users,
   type LucideIcon
@@ -19,6 +20,7 @@ export type ItrPreloadKey =
   | "directorTeam"
   | "directorTasks"
   | "directorApprovals"
+  | "directorTimesheets"
   | "directorProfile";
 
 export interface ItrSectionMeta {
@@ -46,6 +48,14 @@ export const itrSectionMeta: Record<ItrSection, ItrSectionMeta> = {
     icon: ListFilter,
     preload: "directorReports",
     description: "Поиск, фильтрация и переход в карточку отчёта."
+  },
+  timesheets: {
+    id: "timesheets",
+    label: "Табеля",
+    to: "/director?section=timesheets",
+    icon: Table2,
+    preload: "directorTimesheets",
+    description: "Табеля изолировщиков по согласованным отчётам и расценкам работ."
   },
   team: {
     id: "team",
@@ -89,7 +99,14 @@ export const itrSectionMeta: Record<ItrSection, ItrSectionMeta> = {
   }
 };
 
-export const ALL_ITR_SECTIONS: ItrSection[] = ["reports", "team", "tasks", "approvals", "profile"];
+export const ALL_ITR_SECTIONS: ItrSection[] = [
+  "reports",
+  "timesheets",
+  "approvals",
+  "team",
+  "tasks",
+  "profile"
+];
 
 export function getItrSections(position?: string | null, allowedSections?: ItrSection[] | null): ItrSection[] {
   void position;

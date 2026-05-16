@@ -10,6 +10,7 @@ import {
   validateReportNoBase64Photos,
   reportsListEtag
 } from "./reportPhotos.js";
+import { normalizeWorkRates } from "./workRates.js";
 
 const photoUpload = multer({
   storage: multer.memoryStorage(),
@@ -40,7 +41,7 @@ function splitNameParts(input) {
 }
 
 const MIN_PASSWORD_LENGTH = 2;
-const ITR_ALLOWED_SECTIONS = ["reports", "team", "tasks", "approvals", "profile"];
+const ITR_ALLOWED_SECTIONS = ["reports", "timesheets", "team", "tasks", "approvals", "profile"];
 
 function formatFullNameForDisplay(input) {
   const normalized = normalizeLetters(input).trim();
@@ -427,6 +428,93 @@ app.post(
   })
 );
 
+function reportOwnerCanModify(report, auth) {
+  if (auth.role === "admin" || auth.role === "director") return true;
+  return report.userId === auth.uid;
+}
+
+function reportIsLockedForOwner(report) {
+  return (report.status || "submitted") === "approved";
+}
+
+app.put(
+  "/api/reports/:id",
+  authRequired,
+  asyncRoute(async (req, res) => {
+    const id = String(req.params.id || "");
+    const existing = await store.findReportById(id);
+    if (!existing) return res.status(404).json({ error: "Отчёт не найден." });
+    if (!reportOwnerCanModify(existing, req.auth)) {
+      return res.status(403).json({ error: "Нет доступа к этому отчёту." });
+    }
+    if (req.auth.role !== "admin" && req.auth.role !== "director" && reportIsLockedForOwner(existing)) {
+      return res.status(403).json({ error: "Согласованный отчёт нельзя изменить." });
+    }
+
+    const payload = req.body || {};
+    if (!payload || typeof payload !== "object") return res.status(400).json({ error: "Некорректный отчёт." });
+
+    const wasNeedsFix = (existing.status || "submitted") === "needs_fix";
+    const ownerResubmit =
+      req.auth.role !== "admin" && req.auth.role !== "director" && existing.userId === req.auth.uid;
+
+    const report = {
+      ...existing,
+      ...payload,
+      id: existing.id,
+      userId: existing.userId,
+      userEmail: existing.userEmail ?? payload.userEmail,
+      createdAt: Number(existing.createdAt || payload.createdAt || Date.now())
+    };
+
+    if (ownerResubmit && wasNeedsFix) {
+      report.status = "submitted";
+      report.review = undefined;
+    } else if (!report.status) {
+      report.status = existing.status || "submitted";
+    }
+
+    try {
+      validateReportNoBase64Photos(report);
+    } catch (error) {
+      if (error?.code === "BASE64_PHOTO_REJECTED") {
+        return res.status(400).json({ error: error.message, code: error.code });
+      }
+      throw error;
+    }
+
+    const bodySize = JSON.stringify(report).length;
+    if (bodySize > 45 * 1024 * 1024) {
+      return res.status(413).json({
+        error: "Отчёт слишком большой. Используйте облачное хранилище фото (R2) и меньше вложений."
+      });
+    }
+
+    const updated = await store.updateReport(report);
+    if (!updated) return res.status(404).json({ error: "Отчёт не найден." });
+    return res.json({ report: updated });
+  })
+);
+
+app.delete(
+  "/api/reports/:id",
+  authRequired,
+  asyncRoute(async (req, res) => {
+    const id = String(req.params.id || "");
+    const existing = await store.findReportById(id);
+    if (!existing) return res.status(404).json({ error: "Отчёт не найден." });
+    if (!reportOwnerCanModify(existing, req.auth)) {
+      return res.status(403).json({ error: "Нет доступа к этому отчёту." });
+    }
+    if (req.auth.role !== "admin" && req.auth.role !== "director" && reportIsLockedForOwner(existing)) {
+      return res.status(403).json({ error: "Согласованный отчёт нельзя удалить." });
+    }
+    const ok = await store.deleteReport(id);
+    if (!ok) return res.status(404).json({ error: "Отчёт не найден." });
+    return res.status(204).end();
+  })
+);
+
 app.post(
   "/api/admin/users",
   authRequired,
@@ -779,6 +867,31 @@ app.delete(
     }
     await store.deleteTask(id);
     return res.status(204).end();
+  })
+);
+
+const WORK_RATES_KEY = "workRates";
+
+app.get(
+  "/api/settings/work-rates",
+  authRequired,
+  directorOrAdminRequired,
+  asyncRoute(async (_req, res) => {
+    const raw = await store.getSetting(WORK_RATES_KEY);
+    return res.json({ rates: normalizeWorkRates(raw) });
+  })
+);
+
+app.put(
+  "/api/settings/work-rates",
+  authRequired,
+  directorOrAdminRequired,
+  asyncRoute(async (req, res) => {
+    const rates = normalizeWorkRates(req.body || {});
+    rates.updatedAt = nowIso();
+    rates.updatedByUid = req.auth.uid;
+    await store.setSetting(WORK_RATES_KEY, rates);
+    return res.json({ rates });
   })
 );
 

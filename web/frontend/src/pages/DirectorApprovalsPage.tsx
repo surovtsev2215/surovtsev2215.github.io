@@ -10,6 +10,7 @@ import { submitReportReview } from "../lib/reviewApi";
 import { Card, CardContent } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Skeleton } from "../components/ui/skeleton";
+import { FilterPanel } from "../components/layout/FilterPanel";
 import { PeriodSwitcher } from "../components/itr/PeriodSwitcher";
 import { formatLineNames } from "../lib/reportAggregations";
 import { formatWorkSummaryLine, getReportWorkSummary } from "../lib/pipeWorkKind";
@@ -107,17 +108,14 @@ export function DirectorApprovalsPage() {
         </div>
       </div>
 
-      <div className="glass-toolbar itr-panel itr-priority-warn space-y-2">
-        <div className="flex items-center justify-between">
-          <span className="itr-chip">Панель согласования</span>
-        </div>
+      <FilterPanel title="Согласование" tone="accent">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <PeriodSwitcher preset={preset} onChange={setPreset} />
           <div className="text-xs text-slate-500 theme-dark:text-slate-400">
             Всего на согласование: {reports.totals.submittedCount}
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="filter-btn-row">
           <Button
             type="button"
             size="sm"
@@ -138,7 +136,7 @@ export function DirectorApprovalsPage() {
             </>
           )}
         </div>
-      </div>
+      </FilterPanel>
 
       {reports.loading ? (
         <div className="space-y-2">

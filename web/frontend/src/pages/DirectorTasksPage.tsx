@@ -9,6 +9,7 @@ import { deleteTask, updateTask, type TaskScope } from "../lib/tasksApi";
 import { buildItrAccess } from "../lib/itrAccess";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
+import { FilterPanel } from "../components/layout/FilterPanel";
 import { TaskDialog } from "../components/itr/TaskDialog";
 import { formatFullNameForDisplay } from "../lib/normalizeFullName";
 import type { Task, TaskStatus } from "../types";
@@ -144,11 +145,8 @@ export function DirectorTasksPage() {
         </Card>
       ) : null}
 
-      <div className="glass-toolbar itr-panel itr-priority-info space-y-2">
-        <div className="flex items-center justify-between">
-          <span className="itr-chip">Фильтры задач</span>
-        </div>
-        <div className="flex flex-wrap gap-2">
+      <FilterPanel>
+        <div className="filter-btn-row">
           <Button
             type="button"
             size="sm"
@@ -179,7 +177,7 @@ export function DirectorTasksPage() {
             Сброс
           </Button>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="filter-btn-row">
           <Button type="button" size="sm" variant={statusFilters.length === 0 ? "default" : "secondary"} onClick={() => setStatusFilters([])}>
             Все ({tasks.tasks.length})
           </Button>
@@ -196,7 +194,7 @@ export function DirectorTasksPage() {
             Отменённые ({taskStats.cancelled})
           </Button>
         </div>
-      </div>
+      </FilterPanel>
 
       {tasks.loading && tasks.tasks.length === 0 ? (
         <Card className="soft-ring surface-floating">

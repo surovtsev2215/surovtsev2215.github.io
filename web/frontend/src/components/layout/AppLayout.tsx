@@ -52,6 +52,9 @@ function preloadPage(target: StaticPreload | ItrPreloadKey) {
     case "directorApprovals":
       void import("../../pages/DirectorApprovalsPage");
       return;
+    case "directorTimesheets":
+      void import("../../pages/DirectorTimesheetsPage");
+      return;
     case "directorProfile":
       void import("../../pages/DirectorProfilePage");
       return;
@@ -395,7 +398,7 @@ export function AppLayout() {
   );
 
   return (
-    <div className="min-h-screen pb-[calc(7.25rem+env(safe-area-inset-bottom))] md:pb-0">
+    <div className="flex min-h-screen flex-col pb-[calc(4.75rem+env(safe-area-inset-bottom))] md:pb-0">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-lg focus:bg-white focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-slate-900"
@@ -476,7 +479,7 @@ export function AppLayout() {
         )}
       </header>
 
-      <div className={cn("mx-auto grid w-full max-w-7xl gap-3 px-2 py-2 sm:gap-4 sm:px-5 sm:py-4", layoutGridClass)}>
+      <div className={cn("mx-auto grid w-full max-w-7xl flex-1 gap-3 px-2 py-2 sm:gap-4 sm:px-5 sm:py-4", layoutGridClass)}>
         {isDirector && isApiConfigured ? <ItrBadgeProvider /> : null}
         {isAdmin ? (
           <aside className="glass hidden rounded-2xl p-2.5 shadow-card md:block">

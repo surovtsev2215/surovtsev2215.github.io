@@ -40,6 +40,7 @@ echo DALEE na sayte Render.com:
 echo 1) Otkrojte servis pto-backend
 echo 2) Environment - dobavte 5 peremennyh iz fayla
 echo 3) Manual Deploy
+echo 4) Proverka: admin\check-online.bat --strict-photo
 echo.
 start "" "https://dashboard.render.com"
 pause

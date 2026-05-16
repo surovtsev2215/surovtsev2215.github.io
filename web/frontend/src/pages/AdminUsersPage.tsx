@@ -549,6 +549,13 @@ export function AdminUsersPage() {
                           {user.position && (
                             <div className="text-xs text-slate-600 theme-dark:text-slate-300">Должность: {user.position}</div>
                           )}
+
+                          {user.role === "isolator" && (user.brigadeNumber || user.isBrigadeLeader) ? (
+                            <div className="text-xs text-slate-600 theme-dark:text-slate-300">
+                              {user.brigadeNumber ? `Бригада № ${user.brigadeNumber}` : null}
+                              {user.isBrigadeLeader ? `${user.brigadeNumber ? " · " : ""}бригадир` : null}
+                            </div>
+                          ) : null}
                           {user.role !== "admin" && (
                             <div className="mt-2 flex flex-wrap gap-2">
                               <Button type="button" variant="outline" size="sm" onClick={() => beginApiEdit(user)}>

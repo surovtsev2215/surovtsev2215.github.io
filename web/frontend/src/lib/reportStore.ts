@@ -84,6 +84,50 @@ export async function createReport(report: Report) {
   saveDemoReport(report);
 }
 
+function replaceDemoReport(report: Report) {
+  const items = getDemoReports();
+  const index = items.findIndex((r) => r.id === report.id);
+  if (index === -1) throw new Error("Отчёт не найден.");
+  items[index] = report;
+  localStorage.setItem(KEY, JSON.stringify(items.slice(0, 2000)));
+  window.dispatchEvent(new CustomEvent(EVENT));
+}
+
+function removeDemoReport(id: string) {
+  const items = getDemoReports().filter((r) => r.id !== id);
+  localStorage.setItem(KEY, JSON.stringify(items));
+  window.dispatchEvent(new CustomEvent(EVENT));
+}
+
+export async function updateReport(report: Report): Promise<Report> {
+  assertApiOrDemo();
+  if (!report.id) throw new Error("Не указан идентификатор отчёта.");
+  if (isApiConfigured) {
+    const { report: updated } = await apiRequest<{ report: Report }>(`/api/reports/${report.id}`, {
+      method: "PUT",
+      body: JSON.stringify(report),
+      timeoutMs: 120000
+    });
+    reportsCache = null;
+    reportsListEtag = null;
+    return normalizeReport(updated);
+  }
+  const normalized = normalizeReport(report);
+  replaceDemoReport(normalized);
+  return normalized;
+}
+
+export async function deleteReport(id: string): Promise<void> {
+  assertApiOrDemo();
+  if (isApiConfigured) {
+    await apiRequest(`/api/reports/${id}`, { method: "DELETE" });
+    reportsCache = null;
+    reportsListEtag = null;
+    return;
+  }
+  removeDemoReport(id);
+}
+
 export async function fetchReportById(id: string): Promise<Report | null> {
   assertApiOrDemo();
   if (isApiConfigured) {

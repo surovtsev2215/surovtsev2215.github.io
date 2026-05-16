@@ -1,7 +1,16 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { cn, toTodayInputValue } from "../lib/utils";
 import { useAuth } from "../contexts/AuthContext";
-import { createReport, subscribeReportsByUser } from "../lib/reportStore";
+import {
+  createReport,
+  fetchReportById,
+  subscribeReportsByUser,
+  updateReport
+} from "../lib/reportStore";
+import { hydrateReportToForm } from "../lib/reportFormHydrate";
+import { canEditReport, getReportStatus } from "../lib/reportPermissions";
+import { ReportReviewNotice } from "../components/reports/ReportReviewNotice";
 import { toast } from "sonner";
 import type { PipeEntry, Report, ShiftWorkType } from "../types";
 import {
@@ -13,12 +22,13 @@ import {
 } from "../lib/photoUpload";
 import { syntheticEmailForUid } from "../lib/syntheticUserEmail";
 import {
-  ClipboardList,
+  Box,
   Clock3,
+  Hammer,
+  Layers,
   Plus,
   Sparkles,
-  Trash2,
-  Wrench
+  Trash2
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -29,9 +39,12 @@ import { usePipeList, type PipeDraft } from "../hooks/usePipeList";
 import { formatFullNameForDisplay } from "../lib/normalizeFullName";
 import { VolumeInput } from "../components/form/VolumeInput";
 import { PhotoAttachField } from "../components/form/PhotoAttachField";
+import { WorkBlockSection, workCardClass } from "../components/form/WorkBlockSection";
 import { PipeCrewField } from "../components/form/PipeCrewField";
 import { useCrewIsolators } from "../hooks/useCrewIsolators";
+import { usePhotoStorageStatus } from "../hooks/usePhotoStorageStatus";
 import { isBrigadeLeader, pipeEntryFromDraft } from "../lib/brigade";
+import { isApiConfigured } from "../lib/runtimeConfig";
 import {
   collectPhotoCardsWithoutValidData,
   isValidDemountCard,
@@ -121,40 +134,14 @@ function scrollToFirstInvalidField() {
   requestAnimationFrame(() => invalid.focus());
 }
 
-function StepSection({
-  icon,
-  title,
-  subtitle,
-  children
-}: {
-  icon: ReactNode;
-  title: string;
-  subtitle?: string;
-  children: ReactNode;
-}) {
-  return (
-    <Card className="surface-floating animate-in-up overflow-hidden border border-slate-300/90 bg-slate-100/90 shadow-sm theme-dark:border-slate-700/90 theme-dark:bg-slate-900/80">
-      <CardContent className="space-y-3 p-3 sm:p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h3 className="section-title text-base">{title}</h3>
-            {subtitle && <p className="section-subtitle mt-1">{subtitle}</p>}
-          </div>
-          <div className="rounded-lg border border-slate-300 bg-slate-200/70 p-2 text-primary theme-dark:border-slate-700 theme-dark:bg-slate-800/70 theme-dark:text-accent">
-            {icon}
-          </div>
-        </div>
-        <div className="divider-fade" />
-        {children}
-      </CardContent>
-    </Card>
-  );
-}
-
 export function FormPage() {
-  const { profile } = useAuth();
+  const { profile, role } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const editReportId = searchParams.get("edit")?.trim() || "";
   const brigadeLeader = isBrigadeLeader(profile);
   const { isolators: crewIsolators, loading: crewLoading, error: crewError } = useCrewIsolators();
+  const photoStorageStatus = usePhotoStorageStatus();
   const [date, setDate] = useState(toTodayInputValue());
   const [fullName, setFullName] = useState("");
   const shiftPipeList = usePipeList({ maxPhotosPerPipe: MAX_PHOTOS_PER_PIPE });
@@ -198,17 +185,62 @@ export function FormPage() {
     removePhoto: removeExtraEquipmentPhoto
   } = extraEquipmentPipeList;
   const [shiftType, setShiftType] = useState<ShiftWorkType>("hours");
-  const [shiftValue, setShiftValue] = useState<number>(1);
+  const [shiftValue, setShiftValue] = useState<number>(0);
   const [isolatorWorkDescription, setIsolatorWorkDescription] = useState("");
   const [shiftPhotos, setShiftPhotos] = useState<{ file: File; preview: string }[]>([]);
+  const [keptShiftPhotoUrls, setKeptShiftPhotoUrls] = useState<string[]>([]);
   const [shiftWorkPipes, setShiftWorkPipes] = useState<string[]>([]);
-  const [isShiftExpanded, setIsShiftExpanded] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [existingReportForDate, setExistingReportForDate] = useState<Report | null>(null);
+  const [editingReport, setEditingReport] = useState<Report | null>(null);
+  const [editLoading, setEditLoading] = useState(Boolean(editReportId));
+
+  useEffect(() => {
+    if (!editReportId) {
+      setEditingReport(null);
+      setEditLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setEditLoading(true);
+    void (async () => {
+      try {
+        const row = await fetchReportById(editReportId);
+        if (cancelled) return;
+        if (!row || !canEditReport(row, profile?.uid, role)) {
+          toast.error("Отчёт недоступен для редактирования.");
+          setSearchParams({}, { replace: true });
+          setEditingReport(null);
+          return;
+        }
+        const hydrated = hydrateReportToForm(row);
+        setEditingReport(row);
+        setDate(hydrated.date);
+        setFullName(hydrated.fullName);
+        setShiftType(hydrated.shiftType);
+        setShiftValue(hydrated.shiftValue);
+        setIsolatorWorkDescription(hydrated.isolatorWorkDescription);
+        setKeptShiftPhotoUrls(hydrated.keptShiftPhotoUrls);
+        setShiftWorkPipes(hydrated.shiftWorkPipes);
+        setShiftPipes(hydrated.shiftPipes);
+        setPipelinePipes(hydrated.pipelinePipes);
+        setEquipmentPipes(hydrated.equipmentPipes);
+        setExtraEquipmentPipes(hydrated.extraEquipmentPipes);
+        setShiftPhotos([]);
+      } catch {
+        if (!cancelled) toast.error("Не удалось загрузить отчёт для редактирования.");
+      } finally {
+        if (!cancelled) setEditLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [editReportId, profile?.uid, role, setSearchParams]);
 
   useEffect(() => {
     const uid = profile?.uid;
-    if (!uid || !date) {
+    if (!uid || !date || editReportId) {
       setExistingReportForDate(null);
       return;
     }
@@ -430,26 +462,28 @@ export function FormPage() {
     setSubmitting(true);
     try {
       toast.loading("Подготовка отчёта и фото…", { id: "submit-report" });
-      const reportId = crypto.randomUUID();
+      const reportId = editingReport?.id ?? crypto.randomUUID();
       const userId = profile?.uid ?? "demo-isolator";
       const userEmail = profile?.email ?? syntheticEmailForUid(userId);
-      const shiftWorkPhotoUrls = await uploadReportPhotos(
+      const newShiftPhotoUrls = await uploadReportPhotos(
         userId,
         `${reportId}/shift-work`,
         shiftPhotos.map((ph) => ph.file),
         shiftPhotos.map((ph) => ph.preview)
       );
+      const shiftWorkPhotoUrls = [...keptShiftPhotoUrls, ...newShiftPhotoUrls];
 
       const builtPipes: PipeEntry[] = [];
 
       for (const p of validShiftPipes) {
         const pipeId = `shift-${p.localId}`;
-        const photoUrls = await uploadReportPhotos(
+        const newUrls = await uploadReportPhotos(
           userId,
           `${reportId}/shift-pipes/${pipeId}`,
           p.photos.map((ph) => ph.file),
           p.photos.map((ph) => ph.preview)
         );
+        const photoUrls = [...(p.keptPhotoUrls ?? []), ...newUrls];
         builtPipes.push(
           pipeEntryFromDraft(p, {
             id: pipeId,
@@ -468,12 +502,13 @@ export function FormPage() {
 
       for (const p of validPipelinePipes) {
         const pipeId = `pipe-${p.localId}`;
-        const photoUrls = await uploadReportPhotos(
+        const newUrls = await uploadReportPhotos(
           userId,
           `${reportId}/pipes/${pipeId}`,
           p.photos.map((ph) => ph.file),
           p.photos.map((ph) => ph.preview)
         );
+        const photoUrls = [...(p.keptPhotoUrls ?? []), ...newUrls];
         builtPipes.push(
           pipeEntryFromDraft(p, {
             id: pipeId,
@@ -492,12 +527,13 @@ export function FormPage() {
 
       for (const p of validEquipment) {
         const pipeId = `equipment-${p.localId}`;
-        const photoUrls = await uploadReportPhotos(
+        const newUrls = await uploadReportPhotos(
           userId,
           `${reportId}/equipment/${pipeId}`,
           p.photos.map((ph) => ph.file),
           p.photos.map((ph) => ph.preview)
         );
+        const photoUrls = [...(p.keptPhotoUrls ?? []), ...newUrls];
         builtPipes.push(
           pipeEntryFromDraft(p, {
             id: pipeId,
@@ -516,12 +552,13 @@ export function FormPage() {
 
       for (const p of validExtraEquipment) {
         const pipeId = `equipment-extra-${p.localId}`;
-        const photoUrls = await uploadReportPhotos(
+        const newUrls = await uploadReportPhotos(
           userId,
           `${reportId}/equipment-extra/${pipeId}`,
           p.photos.map((ph) => ph.file),
           p.photos.map((ph) => ph.preview)
         );
+        const photoUrls = [...(p.keptPhotoUrls ?? []), ...newUrls];
         builtPipes.push(
           pipeEntryFromDraft(p, {
             id: pipeId,
@@ -544,36 +581,54 @@ export function FormPage() {
         date,
         fullName,
         brigadeNumber: profile?.brigadeNumber?.trim() || "",
-        airTemperature: 0,
-        weather: "",
+        airTemperature: editingReport?.airTemperature ?? 0,
+        weather: editingReport?.weather ?? "",
         comments: isolatorWorkDescription,
         userId,
         userEmail,
-        submittedByUid: userId,
-        submittedByFullName,
+        submittedByUid: editingReport?.submittedByUid ?? userId,
+        submittedByFullName: editingReport?.submittedByFullName ?? submittedByFullName,
         isBrigadeReport: brigadeLeader,
-        createdAt: Date.now(),
+        createdAt: editingReport?.createdAt ?? Date.now(),
+        status: editingReport?.status ?? "submitted",
+        review: editingReport?.review,
         pipes: builtPipes,
         shiftWork: hasShiftBlock ? { type: shiftType, value: shiftValue } : undefined,
-        shiftWorkDescription: isolatorWorkDescription,
-        shiftWorkPhotoUrls,
+        shiftWorkDescription: hasShiftBlock || shiftWorkPhotoUrls.length ? isolatorWorkDescription : undefined,
+        shiftWorkPhotoUrls: shiftWorkPhotoUrls.length ? shiftWorkPhotoUrls : undefined,
         shiftWorkPipes: shiftWorkPipes.map((s) => s.trim()).filter(Boolean)
       };
       let totalPhotos = shiftWorkPhotoUrls.length;
       for (const pipe of builtPipes) totalPhotos += pipe.photoUrls?.length ?? 0;
       toast.loading("Сохранение отчёта…", { id: "submit-report" });
-      await createReport(payload);
-      toast.success(totalPhotos > 0 ? `Отчёт сохранён · фото: ${totalPhotos}` : "Отчёт сохранён", { id: "submit-report" });
+      if (isEditing) {
+        await updateReport(payload);
+      } else {
+        await createReport(payload);
+      }
+      const savedMsg =
+        isEditing && editingStatus === "needs_fix"
+          ? "Отчёт обновлён и снова отправлен на согласование"
+          : isEditing
+            ? "Изменения сохранены"
+            : totalPhotos > 0
+              ? `Отчёт сохранён · фото: ${totalPhotos}`
+              : "Отчёт сохранён";
+      toast.success(savedMsg, { id: "submit-report" });
       setShiftPipes([]);
       setPipelinePipes([]);
       setEquipmentPipes([]);
       setExtraEquipmentPipes([]);
       setShiftType("hours");
-      setShiftValue(1);
+      setShiftValue(0);
       setIsolatorWorkDescription("");
       setShiftPhotos([]);
+      setKeptShiftPhotoUrls([]);
       setShiftWorkPipes([]);
       localStorage.removeItem(DRAFT_KEY);
+      if (isEditing) {
+        navigate("/history", { replace: true });
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Не удалось сохранить отчёт";
       toast.error(msg, { id: "submit-report" });
@@ -586,7 +641,7 @@ export function FormPage() {
     setDate(toTodayInputValue());
     setFullName("");
     setShiftType("hours");
-    setShiftValue(1);
+    setShiftValue(0);
     setIsolatorWorkDescription("");
     setShiftWorkPipes([]);
     shiftPhotos.forEach((ph) => revokePhotoPreview(ph.preview));
@@ -615,8 +670,58 @@ export function FormPage() {
     hasValidPipelinePipes ||
     hasValidEquipment ||
     hasValidExtraEquipment;
+  const shiftWorkActive =
+    shiftValue > 0 ||
+    shiftPipes.length > 0 ||
+    isolatorWorkDescription.trim().length > 0 ||
+    shiftPhotos.length > 0 ||
+    keptShiftPhotoUrls.length > 0;
+
+  function beginShiftWork() {
+    setShiftValue(1);
+  }
+
+  function clearShiftWork() {
+    shiftPhotos.forEach((ph) => revokePhotoPreview(ph.preview));
+    shiftPipes.forEach((p) => p.photos.forEach((ph) => revokePhotoPreview(ph.preview)));
+    setShiftValue(0);
+    setIsolatorWorkDescription("");
+    setShiftPhotos([]);
+    setKeptShiftPhotoUrls([]);
+    setShiftWorkPipes([]);
+    setShiftPipes([]);
+    toast.success("Блок «Работа за часы» очищен");
+  }
+
+  function removeKeptShiftPhoto(index: number) {
+    setKeptShiftPhotoUrls((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function removeKeptPipePhoto(
+    localId: string,
+    index: number,
+    updateFn: (localId: string, patch: Partial<PipeDraft>) => void,
+    pipes: PipeDraft[]
+  ) {
+    const pipe = pipes.find((p) => p.localId === localId);
+    if (!pipe) return;
+    const next = (pipe.keptPhotoUrls ?? []).filter((_, i) => i !== index);
+    updateFn(localId, { keptPhotoUrls: next });
+  }
+
+  if (editLoading) {
+    return (
+      <div className="page-stack p-4">
+        <p className="text-sm text-slate-600 theme-dark:text-slate-300">Загрузка отчёта для редактирования…</p>
+      </div>
+    );
+  }
+
+  const isEditing = Boolean(editingReport?.id);
+  const editingStatus = editingReport ? getReportStatus(editingReport) : null;
+
   return (
-    <div className="page-stack has-submit-dock pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-4">
+    <div className="page-stack has-submit-dock md:pb-4">
       <div className="surface-highlight animate-in-up p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -628,6 +733,40 @@ export function FormPage() {
           <Sparkles className="h-5 w-5 shrink-0 text-amber-300" />
         </div>
       </div>
+
+      {isEditing && editingReport ? (
+        <div className="space-y-2">
+          <div className="rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5 text-sm theme-dark:bg-primary/10">
+            <p className="font-semibold">Редактирование отчёта за {editingReport.date}</p>
+            <p className="mt-1 text-xs text-slate-600 theme-dark:text-slate-300">
+              После сохранения отчёт снова попадёт на согласование ИТР, если был возвращён на доработку.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-2"
+              onClick={() => {
+                setSearchParams({}, { replace: true });
+                setEditingReport(null);
+              }}
+            >
+              Отменить редактирование
+            </Button>
+          </div>
+          <ReportReviewNotice report={editingReport} />
+        </div>
+      ) : null}
+
+      {isApiConfigured && photoStorageStatus === "disabled" ? (
+        <div
+          className="rounded-xl border border-rose-200 bg-rose-50/95 px-3 py-2.5 text-sm text-rose-900 theme-dark:border-rose-800/70 theme-dark:bg-rose-950/40 theme-dark:text-rose-100"
+          role="alert"
+        >
+          Облачное хранилище фото не настроено на сервере. Отчёт с фото не сохранится, пока администратор не
+          выполнит скрипт «Настройка хранилища фото» и не сделает Manual Deploy на Render.
+        </div>
+      ) : null}
 
       <Card className="surface-floating border-slate-300/90 bg-slate-100/85 theme-dark:border-slate-700/90 theme-dark:bg-slate-900/80">
         <CardContent className="space-y-1 p-3 text-sm font-semibold text-slate-800 theme-dark:text-slate-100 sm:text-base">
@@ -653,21 +792,28 @@ export function FormPage() {
         </Card>
       ) : null}
 
-      <StepSection
-        icon={<Clock3 className="h-4 w-4" />}
+      <div className="form-work-blocks mb-2 space-y-6 sm:mb-0 sm:space-y-8">
+      <WorkBlockSection
+        tone="hours"
+        step={1}
+        icon={<Clock3 className="h-5 w-5" />}
         title="Работа за часы"
+        subtitle="Укажите день зачёта, опишите работу за смену и при необходимости добавьте трубы (фольга-ткань)."
       >
-        {!isShiftExpanded ? (
-          <div className="space-y-2">
+        <div className="space-y-3">
+          {!shiftWorkActive && (
             <p className="text-xs text-slate-500 theme-dark:text-slate-400">
-              Разверните и заполните необходимые поля
+              Нажмите «Добавить работу за часы», затем заполните поля смены.
             </p>
-            <Button type="button" variant="secondary" className="w-full" onClick={() => setIsShiftExpanded(true)}>
-              Развернуть
+          )}
+          {shiftWorkActive ? (
+          <div className="space-y-3">
+          <div className="flex justify-end">
+            <Button type="button" variant="outline" size="sm" onClick={clearShiftWork}>
+              <Trash2 className="h-4 w-4" aria-hidden />
+              Удалить работу за часы
             </Button>
           </div>
-        ) : (
-          <div className="space-y-3">
           <div className="space-y-1">
             <Label htmlFor="shift-value">Дата</Label>
             <Input
@@ -703,13 +849,20 @@ export function FormPage() {
             hint="Фото сохранятся вместе с отчётом за смену."
             maxPhotos={MAX_PHOTOS_PER_PIPE}
             photos={shiftPhotos}
+            existingUrls={keptShiftPhotoUrls}
             onAdd={addShiftPhotos}
             onRemove={removeShiftPhoto}
+            onRemoveExisting={removeKeptShiftPhoto}
           />
-          <div className="surface-floating p-3">
+          <div className={cn(workCardClass("hours"), "border-dashed bg-amber-50/40 theme-dark:bg-amber-950/15")}>
             <div className="mb-2 text-sm font-semibold text-slate-700 theme-dark:text-slate-100">
               Трубы для фиксации смены (фольма-ткань)
             </div>
+            {!shiftPipes.length && (
+              <p className="mb-2 text-xs text-slate-500 theme-dark:text-slate-400">
+                Нажмите «Добавить трубу», затем заполните все поля карточки.
+              </p>
+            )}
             {!!shiftPipes.length && (
               <div className="space-y-3">
                 {shiftPipes.map((p, idx) => {
@@ -717,7 +870,8 @@ export function FormPage() {
                   return (
                     <div
                       key={p.localId}
-                      className="surface-floating rounded-2xl p-3"
+                      id={`card-${p.localId}`}
+                      className={workCardClass("hours")}
                     >
                       <div className="mb-2 flex items-center justify-between gap-2">
                         <div className="text-sm font-semibold text-slate-700 theme-dark:text-slate-100">
@@ -822,8 +976,12 @@ export function FormPage() {
                         label={`Фотоотчёт ${p.siteName.trim() || "—"}`}
                         maxPhotos={MAX_PHOTOS_PER_PIPE}
                         photos={p.photos}
+                        existingUrls={p.keptPhotoUrls ?? []}
                         onAdd={(files) => handlePipePhotosAdd(addShiftPipePhotos, p.localId, files)}
                         onRemove={(photoIdx) => removeShiftPipePhoto(p.localId, photoIdx)}
+                        onRemoveExisting={(idx) =>
+                          removeKeptPipePhoto(p.localId, idx, updateShiftPipe, shiftPipes)
+                        }
                       />
 
                       <div className="mt-3 space-y-1">
@@ -850,15 +1008,26 @@ export function FormPage() {
               Добавить трубу
             </Button>
           </div>
-          <Button type="button" variant="secondary" className="w-full" onClick={() => setIsShiftExpanded(false)}>
-            Свернуть
-          </Button>
           </div>
-        )}
-      </StepSection>
+          ) : null}
+          {!shiftWorkActive ? (
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full border-dashed border-slate-300 bg-slate-50 hover:bg-slate-100 theme-dark:border-slate-600 theme-dark:bg-slate-900 theme-dark:hover:bg-slate-800"
+              onClick={beginShiftWork}
+            >
+              <Plus className="h-4 w-4" aria-hidden />
+              Добавить работу за часы
+            </Button>
+          ) : null}
+        </div>
+      </WorkBlockSection>
 
-      <StepSection
-        icon={<Wrench className="h-4 w-4" />}
+      <WorkBlockSection
+        tone="pipeline"
+        step={2}
+        icon={<Layers className="h-5 w-5" />}
         title="Теплоизоляция трубопроводов"
         subtitle="Добавьте все трубы, заизолированные за смену. У каждой свои параметры, фото и комментарии."
       >
@@ -874,7 +1043,7 @@ export function FormPage() {
               <div
                 key={p.localId}
                 id={`card-${p.localId}`}
-                className="surface-floating rounded-2xl p-3"
+                className={workCardClass("pipeline")}
               >
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <div className="text-sm font-semibold text-slate-700 theme-dark:text-slate-100">
@@ -1007,8 +1176,12 @@ export function FormPage() {
                   label={`Фотоотчёт ${p.siteName.trim() || "—"}`}
                   maxPhotos={MAX_PHOTOS_PER_PIPE}
                   photos={p.photos}
+                  existingUrls={p.keptPhotoUrls ?? []}
                   onAdd={(files) => handlePipePhotosAdd(addPipelinePhotos, p.localId, files)}
                   onRemove={(photoIdx) => removePipelinePhoto(p.localId, photoIdx)}
+                  onRemoveExisting={(idx) =>
+                    removeKeptPipePhoto(p.localId, idx, updatePipelinePipe, pipelinePipes)
+                  }
                 />
 
                 <div className="mt-3 space-y-1">
@@ -1034,10 +1207,12 @@ export function FormPage() {
             Добавить трубу
           </Button>
         </div>
-      </StepSection>
+      </WorkBlockSection>
 
-      <StepSection
-        icon={<Wrench className="h-4 w-4" />}
+      <WorkBlockSection
+        tone="equipment"
+        step={3}
+        icon={<Box className="h-5 w-5" />}
         title="Теплоизоляция оборудования"
         subtitle="Добавьте все оборудование, заизолированное за смену. У каждого оборудования свои параметры, фото и коментарии."
       >
@@ -1052,7 +1227,7 @@ export function FormPage() {
             return (
               <div
                 key={p.localId}
-                className="surface-floating rounded-2xl p-3"
+                className={workCardClass("equipment")}
               >
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <div className="text-sm font-semibold text-slate-700 theme-dark:text-slate-100">
@@ -1178,8 +1353,12 @@ export function FormPage() {
                   label={`Фотоотчёт ${p.siteName.trim() || "—"}`}
                   maxPhotos={MAX_PHOTOS_PER_PIPE}
                   photos={p.photos}
+                  existingUrls={p.keptPhotoUrls ?? []}
                   onAdd={(files) => handlePipePhotosAdd(addExtraEquipmentPhotos, p.localId, files)}
                   onRemove={(photoIdx) => removeExtraEquipmentPhoto(p.localId, photoIdx)}
+                  onRemoveExisting={(idx) =>
+                    removeKeptPipePhoto(p.localId, idx, updateExtraEquipmentPipe, extraEquipmentPipes)
+                  }
                 />
 
                 <div className="mt-3 space-y-1">
@@ -1205,13 +1384,15 @@ export function FormPage() {
             Добавить оборудование
           </Button>
         </div>
-      </StepSection>
+      </WorkBlockSection>
 
-      <div>
-        <StepSection
-          icon={<Wrench className="h-4 w-4" />}
-          title="Демонтаж ТИ на трубопроводах"
-        >
+      <WorkBlockSection
+        tone="demount"
+        step={4}
+        icon={<Hammer className="h-5 w-5" />}
+        title="Демонтаж ТИ на трубопроводах"
+        subtitle="Укажите трубопроводы, с которых выполнен демонтаж теплоизоляции."
+      >
           <div className="space-y-3">
           {!equipmentPipes.length && (
             <p className="text-xs text-slate-500 theme-dark:text-slate-400">
@@ -1223,7 +1404,7 @@ export function FormPage() {
             return (
               <div
                 key={p.localId}
-                className="surface-floating rounded-2xl p-3"
+                className={workCardClass("demount")}
               >
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <div className="text-sm font-semibold text-slate-700 theme-dark:text-slate-100">
@@ -1330,8 +1511,12 @@ export function FormPage() {
                   label={`Фотоотчёт ${p.siteName.trim() || "—"}`}
                   maxPhotos={MAX_PHOTOS_PER_PIPE}
                   photos={p.photos}
+                  existingUrls={p.keptPhotoUrls ?? []}
                   onAdd={(files) => handlePipePhotosAdd(addEquipmentPhotos, p.localId, files)}
                   onRemove={(photoIdx) => removeEquipmentPhoto(p.localId, photoIdx)}
+                  onRemoveExisting={(idx) =>
+                    removeKeptPipePhoto(p.localId, idx, updateEquipmentPipe, equipmentPipes)
+                  }
                 />
 
                 <div className="mt-3 space-y-1">
@@ -1357,8 +1542,19 @@ export function FormPage() {
             Добавить трубопровод
           </Button>
           </div>
-        </StepSection>
+      </WorkBlockSection>
       </div>
+
+      {/* Резерв места под фиксированную панель отправки (высота зависит от подсказки) */}
+      <div
+        aria-hidden
+        className={cn(
+          "shrink-0 md:hidden",
+          canSubmit
+            ? "h-[calc(5.5rem+env(safe-area-inset-bottom,0px))]"
+            : "h-[calc(9.5rem+env(safe-area-inset-bottom,0px))]"
+        )}
+      />
 
       <div className="mobile-submit-dock">
         {!canSubmit && (
@@ -1375,7 +1571,11 @@ export function FormPage() {
             disabled={submitting || !canSubmit}
             onClick={() => void submit()}
           >
-            {submitting ? "Сохранение..." : "Отправить отчёт"}
+            {submitting
+              ? "Сохранение..."
+              : isEditing
+                ? "Сохранить изменения"
+                : "Отправить отчёт"}
           </Button>
         </div>
       </div>

@@ -1,9 +1,12 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Clock3, RefreshCw } from "lucide-react";
+import { Clock3, Pencil, RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../contexts/AuthContext";
-import { subscribeReportsByUser } from "../lib/reportStore";
+import { deleteReport, subscribeReportsByUser } from "../lib/reportStore";
+import { canDeleteReport, canEditReport, getReportStatus } from "../lib/reportPermissions";
+import { ReportReviewNotice } from "../components/reports/ReportReviewNotice";
+import { ReportStatusBadge } from "../components/reports/ReportStatusBadge";
 import {
   formatLineNames,
   getReportPipeCount,
@@ -16,10 +19,12 @@ import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { EmptyState, ErrorState, LoadingState } from "../components/feedback/AsyncState";
+import { FilterPanel } from "../components/layout/FilterPanel";
 
 export function HistoryPage() {
-  const { profile } = useAuth();
+  const { profile, role } = useAuth();
   const navigate = useNavigate();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [rows, setRows] = useState<Report[]>([]);
   const [listVersion, setListVersion] = useState(0);
   const [search, setSearch] = useState("");
@@ -76,6 +81,31 @@ export function HistoryPage() {
     setSortDir("desc");
   }
 
+  async function handleDeleteReport(report: Report, e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!report.id || !canDeleteReport(report, profile?.uid, role)) return;
+    const ok = window.confirm(
+      `Удалить отчёт за ${report.date}? Это действие нельзя отменить.`
+    );
+    if (!ok) return;
+    setDeletingId(report.id);
+    try {
+      await deleteReport(report.id);
+      toast.success("Отчёт удалён");
+      setListVersion((v) => v + 1);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Не удалось удалить отчёт");
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  function openEdit(report: Report, e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!report.id || !canEditReport(report, profile?.uid, role)) return;
+    navigate(`/form?edit=${encodeURIComponent(report.id)}`);
+  }
+
   useEffect(() => {
     if (!profile?.uid) return;
     setLoading(true);
@@ -107,23 +137,21 @@ export function HistoryPage() {
           <Clock3 className="h-5 w-5 shrink-0 text-amber-300" />
         </div>
       </div>
-      <div className="content-section mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="section-title text-sm uppercase tracking-wide sm:text-sm">
-          Поиск и фильтрация
-        </h3>
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          onClick={() => setListVersion((v) => v + 1)}
-          aria-label="Обновить список"
-        >
-          <RefreshCw className="h-4 w-4" aria-hidden />
-          Обновить
-        </Button>
-      </div>
-      <div className="glass-toolbar surface-floating mb-3 animate-in-up">
-        <div className="grid gap-2 md:grid-cols-3">
+      <FilterPanel
+        actions={
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => setListVersion((v) => v + 1)}
+            aria-label="Обновить список"
+          >
+            <RefreshCw className="h-4 w-4" aria-hidden />
+            Обновить
+          </Button>
+        }
+      >
+        <div className="filter-field-grid">
           <Input
             placeholder="Поиск: линия, тип изоляции, блок"
             value={search}
@@ -143,7 +171,7 @@ export function HistoryPage() {
             aria-label="Дата до"
           />
         </div>
-        <div className="responsive-toolbar-controls sm:mt-2 sm:flex sm:flex-wrap sm:items-center sm:gap-2">
+        <div className="filter-btn-row">
           <Button type="button" variant="secondary" size="sm" className="flex-1 sm:flex-none" onClick={() => applyRange(7)}>
             7 дней
           </Button>
@@ -174,11 +202,11 @@ export function HistoryPage() {
             <option value="desc">Сначала новые/больше</option>
             <option value="asc">Сначала старые/меньше</option>
           </select>
-          <span className="text-xs text-slate-500 theme-dark:text-slate-400">
+          <span className="w-full text-xs text-slate-500 sm:ml-auto sm:w-auto theme-dark:text-slate-400">
             Найдено: {stats.count} · {stats.meters.toFixed(1)} м
           </span>
         </div>
-      </div>
+      </FilterPanel>
       {loading ? (
         <LoadingState label="Загружаем историю отчётов..." />
       ) : error ? (
@@ -218,6 +246,9 @@ export function HistoryPage() {
           {filteredRows.map((r) => {
             const pipeCount = getReportPipeCount(r);
             const totalLen = getReportTotalLength(r);
+            const status = getReportStatus(r);
+            const editable = canEditReport(r, profile?.uid, role);
+            const deletable = canDeleteReport(r, profile?.uid, role);
             return (
               <Card
                 key={r.id ?? r.createdAt}
@@ -232,12 +263,15 @@ export function HistoryPage() {
                   }
                 }}
               >
-                <CardContent className="p-3">
+                <CardContent className="space-y-2 p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="font-medium">{formatLineNames(r)}</div>
-                    <div className="text-sm text-slate-500 theme-dark:text-slate-400">{r.date}</div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <ReportStatusBadge status={status} />
+                      <span className="text-sm text-slate-500 theme-dark:text-slate-400">{r.date}</span>
+                    </div>
                   </div>
-                  <div className="mt-1 text-sm text-slate-600 theme-dark:text-slate-300">
+                  <div className="text-sm text-slate-600 theme-dark:text-slate-300">
                     Блок {r.fullName || "—"} · {pipeCount} {pipeCount === 1 ? "труба" : "труб(ы)"} · Σ {totalLen.toFixed(1)} м
                     {r.isBrigadeReport ? " · отчёт бригады" : ""}
                   {formatCrewLine(collectUniqueCrewFromReport(r)) ? (
@@ -246,6 +280,37 @@ export function HistoryPage() {
                     </p>
                   ) : null}
                   </div>
+                  {status === "needs_fix" ? (
+                    <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                      <ReportReviewNotice report={r} compact />
+                    </div>
+                  ) : null}
+                  {(editable || deletable) && (
+                    <div
+                      className="flex flex-wrap gap-2 border-t border-slate-200/80 pt-2 theme-dark:border-slate-700/80"
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    >
+                      {editable ? (
+                        <Button type="button" variant="secondary" size="sm" onClick={(e) => openEdit(r, e)}>
+                          <Pencil className="h-4 w-4" aria-hidden />
+                          Изменить
+                        </Button>
+                      ) : null}
+                      {deletable ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={deletingId === r.id}
+                          onClick={(e) => void handleDeleteReport(r, e)}
+                        >
+                          <Trash2 className="h-4 w-4" aria-hidden />
+                          {deletingId === r.id ? "Удаление…" : "Удалить"}
+                        </Button>
+                      ) : null}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             );

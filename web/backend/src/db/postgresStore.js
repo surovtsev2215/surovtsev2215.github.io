@@ -81,7 +81,28 @@ export async function initPostgresStore() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+
+    CREATE TABLE IF NOT EXISTS app_settings (
+      key TEXT PRIMARY KEY,
+      payload JSONB NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
   `);
+}
+
+export async function pgGetSetting(key) {
+  const { rows } = await pool.query("SELECT payload FROM app_settings WHERE key = $1 LIMIT 1", [key]);
+  return rows[0]?.payload ?? null;
+}
+
+export async function pgSetSetting(key, payload) {
+  await pool.query(
+    `INSERT INTO app_settings (key, payload, updated_at)
+     VALUES ($1, $2::jsonb, NOW())
+     ON CONFLICT (key) DO UPDATE SET payload = EXCLUDED.payload, updated_at = NOW()`,
+    [key, JSON.stringify(payload)]
+  );
+  return payload;
 }
 
 export async function shutdownPostgresStore() {
@@ -230,6 +251,11 @@ export async function pgUpdateReport(report) {
     [report.id, report.userId, reportDate, Number(report.createdAt || Date.now()), JSON.stringify(report)]
   );
   return rowCount > 0 ? report : null;
+}
+
+export async function pgDeleteReport(id) {
+  const { rowCount } = await pool.query("DELETE FROM reports WHERE id = $1", [id]);
+  return rowCount > 0;
 }
 
 function payloadToTask(row) {

@@ -15,6 +15,7 @@ import { formatWorkSummaryLine, getReportWorkSummary } from "../lib/pipeWorkKind
 import { formatFullNameForDisplay } from "../lib/normalizeFullName";
 import { collectUniqueCrewFromReport, formatCrewLine } from "../lib/brigade";
 import { exportExcel, exportPdf } from "../lib/exportReports";
+import { FilterPanel } from "../components/layout/FilterPanel";
 import { PeriodSwitcher } from "../components/itr/PeriodSwitcher";
 import { ApprovedReportsOverview } from "../components/itr/ApprovedReportsOverview";
 import { formatItrPeriodLabel } from "../lib/approvedReportsSummary";
@@ -134,10 +135,7 @@ export function DirectorReportsPage() {
         </div>
       </div>
 
-      <div className="glass-toolbar surface-floating itr-panel itr-priority-info space-y-2">
-        <div className="flex items-center justify-between">
-          <span className="itr-chip">Фильтры отчётов</span>
-        </div>
+      <FilterPanel>
         <Input
           placeholder="Поиск: блок, линия, тип изоляции"
           value={search}
@@ -148,7 +146,7 @@ export function DirectorReportsPage() {
           }}
           aria-label="Поиск по блоку, линии или типу изоляции"
         />
-        <div className="flex flex-wrap gap-2">
+        <div className="filter-btn-row">
           <Button type="button" variant={statusFilter === "submitted" ? "default" : "secondary"} size="sm" onClick={() => setParam("status", "submitted")}>
             На согласовании
           </Button>
@@ -189,7 +187,7 @@ export function DirectorReportsPage() {
             ))}
           </div>
         )}
-      </div>
+      </FilterPanel>
 
       <ApprovedReportsOverview
         summary={reports.approvedInPeriod}

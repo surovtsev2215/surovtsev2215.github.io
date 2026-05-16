@@ -56,6 +56,15 @@ export const createReport = (...args) =>
 export const updateReport = (...args) =>
   mode === "postgres" ? postgresStore.pgUpdateReport(...args) : jsonStore.jsonUpdateReport(...args);
 
+export const deleteReport = (...args) =>
+  mode === "postgres" ? postgresStore.pgDeleteReport(...args) : jsonStore.jsonDeleteReport(...args);
+
+export const getSetting = (...args) =>
+  mode === "postgres" ? postgresStore.pgGetSetting(...args) : jsonStore.jsonGetSetting(...args);
+
+export const setSetting = (...args) =>
+  mode === "postgres" ? postgresStore.pgSetSetting(...args) : jsonStore.jsonSetSetting(...args);
+
 export const listTasks = (...args) =>
   mode === "postgres" ? postgresStore.pgListTasks(...args) : jsonStore.jsonListTasks(...args);
 

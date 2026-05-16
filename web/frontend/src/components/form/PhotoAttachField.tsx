@@ -15,8 +15,10 @@ type PhotoAttachFieldProps = {
   hint?: string;
   maxPhotos: number;
   photos: PhotoDraft[];
+  existingUrls?: string[];
   onAdd: (files: FileList | null) => void | Promise<void>;
   onRemove: (index: number) => void;
+  onRemoveExisting?: (index: number) => void;
 };
 
 export function PhotoAttachField({
@@ -25,8 +27,10 @@ export function PhotoAttachField({
   hint = "JPEG, PNG, HEIC, WebP и др. Если много фото — добавляйте по 2–3 за раз. Сохраняются при полностью заполненной карточке.",
   maxPhotos,
   photos,
+  existingUrls = [],
   onAdd,
-  onRemove
+  onRemove,
+  onRemoveExisting
 }: PhotoAttachFieldProps) {
   const cameraInputId = useId();
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -42,7 +46,8 @@ export function PhotoAttachField({
     }
   }
 
-  const atLimit = photos.length >= maxPhotos;
+  const totalCount = photos.length + existingUrls.length;
+  const atLimit = totalCount >= maxPhotos;
 
   return (
     <div className="surface-muted soft-ring border border-dashed border-slate-300 p-3 theme-dark:border-slate-600">
@@ -53,7 +58,7 @@ export function PhotoAttachField({
           ) : (
             <ImagePlus className="h-4 w-4" aria-hidden />
           )}
-          {label} ({photos.length}/{maxPhotos})
+          {label} ({totalCount}/{maxPhotos})
         </span>
       </Label>
       <p className="mb-2 text-xs text-slate-500 theme-dark:text-slate-400">{hint}</p>
@@ -100,8 +105,30 @@ export function PhotoAttachField({
           }}
         />
       </div>
-      {!!photos.length && (
+      {!!(photos.length || existingUrls.length) && (
         <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
+          {existingUrls.map((url, photoIdx) => (
+            <div key={`${url}-${photoIdx}`} className="relative">
+              <img
+                src={url}
+                alt={`Сохранённое фото ${photoIdx + 1}`}
+                loading="lazy"
+                decoding="async"
+                className="h-24 w-full rounded-lg object-cover"
+              />
+              {onRemoveExisting ? (
+                <button
+                  type="button"
+                  className="absolute right-1 top-1 rounded bg-black/60 px-2 py-1 text-xs text-white"
+                  onClick={() => onRemoveExisting(photoIdx)}
+                  aria-label="Удалить фото"
+                  disabled={processing}
+                >
+                  ×
+                </button>
+              ) : null}
+            </div>
+          ))}
           {photos.map((ph, photoIdx) => (
             <div key={`${ph.preview.slice(0, 32)}-${photoIdx}`} className="relative">
               <img

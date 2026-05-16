@@ -9,6 +9,7 @@ import { Card, CardContent } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
 import { EmployeeRow } from "../components/itr/EmployeeRow";
+import { FilterPanel } from "../components/layout/FilterPanel";
 import { PeriodSwitcher } from "../components/itr/PeriodSwitcher";
 import {
   getReportJointsCount,
@@ -111,10 +112,7 @@ export function DirectorTeamPage() {
         </div>
       </div>
 
-      <div className="glass-toolbar itr-panel itr-priority-info space-y-2">
-        <div className="flex items-center justify-between">
-          <span className="itr-chip">Фильтры команды</span>
-        </div>
+      <FilterPanel>
         <Input
           placeholder="Поиск по ФИО"
           value={search}
@@ -144,7 +142,7 @@ export function DirectorTeamPage() {
             </Button>
           </div>
         </div>
-      </div>
+      </FilterPanel>
 
       {todayShiftRows.length > 0 && (
         <Card className="soft-ring itr-panel itr-priority-success">

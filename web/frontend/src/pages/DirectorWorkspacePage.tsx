@@ -8,6 +8,7 @@ import { DirectorTeamPage } from "./DirectorTeamPage";
 import { DirectorTasksPage } from "./DirectorTasksPage";
 import { DirectorApprovalsPage } from "./DirectorApprovalsPage";
 import { DirectorProfilePage } from "./DirectorProfilePage";
+import { DirectorTimesheetsPage } from "./DirectorTimesheetsPage";
 
 function normalizeSection(raw: string | null): ItrSection {
   if (raw === "home" || raw === "analytics") return "reports";
@@ -47,6 +48,9 @@ export function DirectorWorkspacePage() {
       <section className="page-stack">
         <div className="rounded-2xl p-0 sm:p-1">
           {activeSection === "reports" && access.hasSection("reports") ? <DirectorReportsPage /> : null}
+          {activeSection === "timesheets" && access.hasSection("timesheets") ? (
+            <DirectorTimesheetsPage />
+          ) : null}
           {activeSection === "team" && access.hasSection("team") ? <DirectorTeamPage /> : null}
           {activeSection === "tasks" && access.hasSection("tasks") ? <DirectorTasksPage /> : null}
           {activeSection === "approvals" && access.hasSection("approvals") ? <DirectorApprovalsPage /> : null}
